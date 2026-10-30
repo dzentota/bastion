@@ -58,6 +58,14 @@ final class Schema
                 expires_at INTEGER NOT NULL,
                 used INTEGER NOT NULL DEFAULT 0
             ){$suffix}",
+            "CREATE TABLE IF NOT EXISTS ?_extensions (
+                name VARCHAR(80) PRIMARY KEY,
+                manifest {$text} NOT NULL,
+                files {$text} NOT NULL,
+                granted {$text} NOT NULL,
+                enabled INTEGER NOT NULL,
+                mac CHAR(64) NOT NULL
+            ){$suffix}",
             "CREATE TABLE IF NOT EXISTS ?_media (
                 id VARCHAR(32) PRIMARY KEY,
                 kind VARCHAR(8) NOT NULL,

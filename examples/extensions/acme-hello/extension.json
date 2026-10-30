@@ -1,0 +1,8 @@
+{
+    "name": "acme/hello",
+    "version": "1.0.0",
+    "description": "Example: adds the 'shout' helper and a recent-posts counter.",
+    "publisher_key": "iULSEay15mr9DiEBtcesehTXA0R9uud726y4dLvaL3Y=",
+    "capabilities": ["render.helper", "content.read"],
+    "entry": "Plugin"
+}

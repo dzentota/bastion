@@ -58,6 +58,16 @@ final class HttpHarness
         return $this->send('POST', $path, $withToken ? ['_token' => $this->token()] : [], ['file' => $file]);
     }
 
+    /** @param array<string, array{0: string, 1: string}> $files поле => [содержимое, имя файла] */
+    public function uploadMany(string $path, array $files): ResponseInterface
+    {
+        $uploaded = [];
+        foreach ($files as $field => [$bytes, $name]) {
+            $uploaded[$field] = new \Nyholm\Psr7\UploadedFile(\Nyholm\Psr7\Stream::create($bytes), strlen($bytes), UPLOAD_ERR_OK, $name, 'application/octet-stream');
+        }
+        return $this->send('POST', $path, ['_token' => $this->token()], $uploaded);
+    }
+
     public function token(): string
     {
         preg_match('/name="_token" value="([^"]+)"/', (string) $this->last?->getBody(), $m);

@@ -138,7 +138,8 @@ final class Renderer
             'attr' => $this->escape($string, 'attr'),
             // dzentota/template-variable: allowlist схем (http/https/mailto/относительные), иначе "#"
             'url' => $this->escape($string, 'url_attr'),
-            default => $this->escape(($this->helpers[$filter])($string), 'html'),
+            // helper отключённого расширения → значение выводится без обработки (экранированным)
+            default => $this->escape(isset($this->helpers[$filter]) ? ($this->helpers[$filter])($string) : $string, 'html'),
         };
     }
 

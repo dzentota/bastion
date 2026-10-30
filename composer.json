@@ -26,6 +26,7 @@
         "dzentota/template-variable": "dev-main",
         "dzentota/typedvalue": "dev-master",
         "lbuchs/webauthn": "^2.2",
+        "nikic/php-parser": "^5.7",
         "nyholm/psr7": "^1.8",
         "nyholm/psr7-server": "^1.1",
         "paragonie/csp-builder": "^3.0",

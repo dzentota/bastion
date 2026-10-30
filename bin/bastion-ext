@@ -1,0 +1,49 @@
+#!/usr/bin/env php
+<?php
+// Инструмент издателя расширений Bastion: ключи и подписанные пакеты.
+declare(strict_types=1);
+
+use Bastion\Extensions\Application\PackageSignature;
+
+require dirname(__DIR__) . '/vendor/autoload.php';
+
+[$cmd, $a, $b, $c] = [$argv[1] ?? '', $argv[2] ?? '', $argv[3] ?? '', $argv[4] ?? ''];
+switch ($cmd) {
+    case 'keygen':
+        // Секретный ключ — в файл с правами 0600; публичный — печатается для extension.json.
+        $pair = sodium_crypto_sign_keypair();
+        if ($a === '' || file_exists($a)) {
+            fwrite(STDERR, "Usage: bastion-ext keygen <secret-key-file> (file must not exist)\n");
+            exit(1);
+        }
+        file_put_contents($a, base64_encode(sodium_crypto_sign_secretkey($pair)) . "\n");
+        chmod($a, 0600);
+        echo "publisher_key: " . base64_encode(sodium_crypto_sign_publickey($pair)) . "\n";
+        break;
+    case 'pack':
+        // pack <extension-dir> <secret-key-file> <out.zip> → out.zip + out.zip.sig
+        if (!is_dir($a) || !is_file($b) || $c === '') {
+            fwrite(STDERR, "Usage: bastion-ext pack <extension-dir> <secret-key-file> <out.zip>\n");
+            exit(1);
+        }
+        $zip = new ZipArchive();
+        $zip->open($c, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($a, FilesystemIterator::SKIP_DOTS));
+        $files = [];
+        foreach ($it as $f) {
+            $files[] = substr($f->getPathname(), strlen(rtrim($a, '/')) + 1);
+        }
+        sort($files);
+        foreach ($files as $rel) {
+            $zip->addFile(rtrim($a, '/') . '/' . $rel, $rel);
+            $zip->setMtimeName($rel, 0); // воспроизводимые архивы
+        }
+        $zip->close();
+        $secret = base64_decode(trim((string) file_get_contents($b)), true);
+        file_put_contents($c . '.sig', PackageSignature::sign((string) file_get_contents($c), (string) $secret) . "\n");
+        echo "Wrote {$c} and {$c}.sig\n";
+        break;
+    default:
+        echo "Usage:\n  bastion-ext keygen <secret-key-file>\n  bastion-ext pack <extension-dir> <secret-key-file> <out.zip>\n";
+        exit($cmd === '' ? 0 : 1);
+}

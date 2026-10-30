@@ -20,6 +20,7 @@ final class Paths
     public function templateCache(): string { return $this->var('cache/templates'); }
     public function sqlite(): string { return $this->var('bastion.sqlite'); }
     public function adminTemplates(): string { return $this->root . '/templates/admin'; }
+    public function extensions(): string { return $this->root . '/extensions'; }
     public function theme(string $name): string { return $this->root . '/themes/' . $name . '/templates'; }
 
     public function isInstalled(): bool

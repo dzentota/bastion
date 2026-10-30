@@ -16,7 +16,9 @@ use Bastion\IdentityAccess\Domain\{SiteUrl, StaffEmail};
 use Bastion\IdentityAccess\Infrastructure\ResetTokenRepository;
 use Bastion\Mail\{Mailer, SmtpConfig, SmtpMailer, UnconfiguredMailer};
 use Bastion\Shared\Application\AfterResponse;
-use Bastion\Http\Controller\{AuditController, AuthController, PasswordResetController, CommentController, EntryController, InstallController, MediaController, PublicController};
+use Bastion\Extensions\Application\{ExtensionInstaller, ExtensionLoader, HelperCollector, PackageReader, StaticGate};
+use Bastion\Extensions\Infrastructure\{ExtensionRegistry, PublishedContentReader};
+use Bastion\Http\Controller\{AuditController, AuthController, ExtensionController, PasswordResetController, CommentController, EntryController, InstallController, MediaController, PublicController};
 use dzentota\Router\Middleware\HoneypotMiddleware;
 use Bastion\Media\Application\{MediaSanitizer, UploadMedia, UploadPolicy};
 use Bastion\Media\Domain\{MediaId, MediaStorage};
@@ -112,6 +114,24 @@ final class Kernel
                 self::get($c, Db::class), KeyFactory::loadEncryptionKey($paths->encryptionKey()),
             )),
             AfterResponse::class => create(AfterResponse::class),
+            ExtensionRegistry::class => factory(fn (ContainerInterface $c) => new ExtensionRegistry(self::get($c, Db::class), self::derivedKey($paths, 'extensions'))),
+            ExtensionInstaller::class => factory(fn (ContainerInterface $c) => new ExtensionInstaller(
+                new PackageReader(), new StaticGate(), self::get($c, ExtensionRegistry::class), $paths->extensions(), self::get($c, AuditTrail::class),
+            )),
+            ExtensionController::class => factory(fn (ContainerInterface $c) => new ExtensionController(
+                self::get($c, ExtensionInstaller::class), self::get($c, ExtensionRegistry::class), self::get($c, View::class), self::get($c, AppSensor::class),
+            )),
+            // helper'ы расширений для темы; расширения загружаются (с проверкой целостности) один раз на запрос
+            HelperCollector::class => factory(function (ContainerInterface $c) use ($paths): HelperCollector {
+                $helpers = new HelperCollector(self::get($c, LoggerInterface::class));
+                if ($paths->isInstalled()) {
+                    (new ExtensionLoader(
+                        self::get($c, ExtensionRegistry::class), self::get($c, ExtensionInstaller::class), $helpers,
+                        new PublishedContentReader(self::get($c, EntryRepository::class)), self::get($c, AppSensor::class), self::get($c, LoggerInterface::class),
+                    ))->loadEnabled();
+                }
+                return $helpers;
+            }),
             Mailer::class => factory(function () use ($paths): Mailer {
                 $cfg = ConfigLoaderFactory::createFromJsonAndEnv($paths->config(), 'BASTION_', false);
                 if (!is_string($cfg->getRaw('mail.host', null))) {
@@ -178,7 +198,7 @@ final class Kernel
                     : null;
                 return new View(
                     new Renderer(new DirectoryTemplateSource($paths->adminTemplates()), $cache('admin')),
-                    new Renderer(new DirectoryTemplateSource($paths->theme('default')), $cache('theme')),
+                    new Renderer(new DirectoryTemplateSource($paths->theme('default')), $cache('theme'), self::get($c, HelperCollector::class)->all()),
                     self::get($c, ResponseFactoryInterface::class),
                 );
             }),
@@ -275,6 +295,10 @@ final class Kernel
         $router->get('/media/{id}', [MediaController::class, 'serve'])->where(['id' => MediaId::class]);
 
         $router->post('/comments', [CommentController::class, 'store'])->middleware(self::get($c, HoneypotMiddleware::class));
+        $router->get('/admin/extensions', [ExtensionController::class, 'index'])->middleware($staff);
+        $router->post('/admin/extensions', [ExtensionController::class, 'upload'])->middleware($staff);
+        $router->post('/admin/extensions/enable', [ExtensionController::class, 'enable'])->middleware($staff);
+        $router->post('/admin/extensions/disable', [ExtensionController::class, 'disable'])->middleware($staff);
         $router->get('/admin/audit', [AuditController::class, 'index'])->middleware($staff);
         $router->get('/admin/comments', [CommentController::class, 'queue'])->middleware($staff);
         foreach (['approve', 'reject', 'spam'] as $action) {

@@ -8,7 +8,5 @@ declare(strict_types=1);
  */
 return [
     'term-enumeration-dos',  // Taxonomy
-    'malicious-extension',   // Extensions (Static Gate + Gossamer)
-    'capability-overreach',  // Extensions (Facades)
     'update-hijack',         // Updates (Chronicle)
 ];

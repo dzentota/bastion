@@ -20,5 +20,8 @@ enum AuditAction: string
     case CommentRejected = 'comment_rejected';
     case CommentMarkedSpam = 'comment_spam';
     case SecurityResponse = 'security_response';
+    case ExtensionInstalled = 'extension_installed';
+    case ExtensionEnabled = 'extension_enabled';
+    case ExtensionDisabled = 'extension_disabled';
     case EmergencyUnlock = 'emergency_unlock';
 }

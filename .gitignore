@@ -2,3 +2,4 @@
 /var/
 .phpunit.cache/
 .phpunit.result.cache
+/extensions/
