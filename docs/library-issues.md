@@ -22,7 +22,7 @@
 | 15 | typedvalue | Нет generics | ✅ `@template`; baseline phpstan Bastion 170 → 123 |
 | 16 | hybridtm | `bin/hybridtm` не работал из vendor | ✅ |
 | 17 | hybridtm | `#[Mitigation]` без `#[AssetId]` молча игнорировался | ✅ учитывается через `#[AbuserStory]`, иначе предупреждение |
-| 19 | http-client | **SSRF:** IP-литералы в URL (`https://127.0.0.1`, `10.x`, `2130706433`, `0x7f.1`) не проверялись по блоклисту — проверялся только результат DNS | ⏳ исправлено в ветке `fix/ssrf-ip-literals` (локально, не опубликовано); в Bastion — защита в `S3Config` |
+| 19 | http-client | **SSRF:** IP-литералы в URL (`https://127.0.0.1`, `10.x`, `2130706433`, `0x7f.1`) не проверялись по блоклисту — проверялся только результат DNS | ✅ dzentota/http-client#1 (плюс защита в `S3Config`) |
 | 18 | все | Нет тегированных релизов | ⏳ после публикации веток |
 
 Попутно: обновлены lock-файлы identity, session, secure-db — залоченные версии

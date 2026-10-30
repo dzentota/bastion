@@ -397,12 +397,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/dzentota/http-client",
-                "reference": "e34dca4eeb20bc0bcb26357d580f7ba31296c6f0"
+                "reference": "6087bd481cc106b8456324a16746fe056522d79c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/dzentota/http-client/zipball/e34dca4eeb20bc0bcb26357d580f7ba31296c6f0",
-                "reference": "e34dca4eeb20bc0bcb26357d580f7ba31296c6f0",
+                "url": "https://api.github.com/repos/dzentota/http-client/zipball/6087bd481cc106b8456324a16746fe056522d79c",
+                "reference": "6087bd481cc106b8456324a16746fe056522d79c",
                 "shasum": ""
             },
             "require": {
@@ -454,7 +454,7 @@
                 }
             ],
             "description": "A secure HTTP client library that prevents SSRF attacks using secure DNS resolution",
-            "time": "2025-07-08T19:28:42+00:00"
+            "time": "2026-10-30T19:55:33+00:00"
         },
         {
             "name": "dzentota/identity",
