@@ -14,11 +14,18 @@
         <option value="paragraph"{% if row.is_paragraph %} selected{% endif %}>Paragraph</option>
         <option value="heading"{% if row.is_heading %} selected{% endif %}>Heading</option>
         <option value="quote"{% if row.is_quote %} selected{% endif %}>Quote</option>
+        <option value="image"{% if row.is_image %} selected{% endif %}>Image</option>
       </select>
-      <textarea name="blocks[{{ row.i | attr }}][text]" rows="3" aria-label="Block text">{{ row.text }}</textarea>
+      <div>
+        <textarea name="blocks[{{ row.i | attr }}][text]" rows="3" aria-label="Block text (alt text for images)">{{ row.text }}</textarea>
+        <select name="blocks[{{ row.i | attr }}][media]" aria-label="Image from the media library">
+          <option value="">— image (for Image blocks) —</option>
+          {% each row.media as m %}<option value="{{ m.id | attr }}"{% if m.selected %} selected{% endif %}>{{ m.name }}</option>{% endeach %}
+        </select>
+      </div>
     </div>
     {% endeach %}
-    <p class="hint">Empty blocks are ignored. Text is shown exactly as typed — HTML is not interpreted.</p>
+    <p class="hint">Empty blocks are ignored. Text is shown exactly as typed — HTML is not interpreted. For an Image block pick a file from the <a href="/admin/media">media library</a>; the text becomes its alt text.</p>
   </fieldset>
   <button>Save draft</button>
 </form>

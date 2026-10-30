@@ -31,7 +31,8 @@ final class SecurityHeaders implements MiddlewareInterface
             'form-action' => ['self' => true],
             'upgrade-insecure-requests' => $this->https,
         ]));
-        $response = $csp->injectCSPHeader($response)
+        // Ответ может задать свой, более строгий CSP (например, раздача медиа в sandbox).
+        $response = ($response->hasHeader('Content-Security-Policy') ? $response : $csp->injectCSPHeader($response))
             ->withHeader('X-Content-Type-Options', 'nosniff')
             ->withHeader('X-Frame-Options', 'DENY')
             ->withHeader('Referrer-Policy', 'same-origin')

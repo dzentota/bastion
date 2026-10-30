@@ -16,6 +16,7 @@ final class BlockList implements \IteratorAggregate, \Countable
         'paragraph' => Paragraph::class,
         'heading' => Heading::class,
         'quote' => Quote::class,
+        'image' => Image::class,
     ];
 
     /** @param list<Block> $blocks */
@@ -65,6 +66,18 @@ final class BlockList implements \IteratorAggregate, \Countable
             array_map(static fn (Block $b) => ['type' => $b::type(), 'data' => $b->toArray()], $this->blocks),
             JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE,
         );
+    }
+
+    /** @return list<\Bastion\Media\Domain\MediaId> */
+    public function mediaIds(): array
+    {
+        $ids = [];
+        foreach ($this->blocks as $b) {
+            if ($b instanceof Image) {
+                $ids[] = $b->media;
+            }
+        }
+        return $ids;
     }
 
     public function getIterator(): \ArrayIterator

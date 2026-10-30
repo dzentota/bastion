@@ -6,7 +6,11 @@ namespace Bastion\Http;
 use Bastion\Content\Domain\{EntryId, Slug};
 use Bastion\Content\Infrastructure\EntryRepository;
 use Bastion\Content\Rendering\BlockHtmlRenderer;
-use Bastion\Http\Controller\{AuthController, EntryController, InstallController, PublicController};
+use Bastion\Http\Controller\{AuthController, EntryController, InstallController, MediaController, PublicController};
+use Bastion\Media\Application\{MediaSanitizer, UploadMedia, UploadPolicy};
+use Bastion\Media\Domain\{MediaId, MediaStorage};
+use Bastion\Media\Infrastructure\{LocalMediaStorage, MediaRepository, S3Config, S3MediaStorage};
+use Dzentota\HttpClient\HttpClient;
 use Bastion\Http\Middleware\{AppSensorGate, ErrorHandler, InstallGuard, RequireStaff, SecurityHeaders, SessionCsrfStrategy};
 use Bastion\IdentityAccess\Application\{PasswordVerifier, TwoStepLogin};
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
@@ -82,15 +86,37 @@ final class Kernel
                 return Connection::sqlite($paths->sqlite());
             }),
             AppSensor::class => factory(fn (ContainerInterface $c) => $paths->isInstalled()
-                ? new DbAppSensor($c->get(Db::class), $c->get(ClockInterface::class), $c->get(LoggerInterface::class))
-                : new LogOnlyAppSensor($c->get(LoggerInterface::class))),
+                ? new DbAppSensor(self::get($c, Db::class), self::get($c, ClockInterface::class), self::get($c, LoggerInterface::class))
+                : new LogOnlyAppSensor(self::get($c, LoggerInterface::class))),
             AccountRepository::class => factory(fn (ContainerInterface $c) => new AccountRepository(
-                $c->get(Db::class), KeyFactory::loadEncryptionKey($paths->encryptionKey()),
+                self::get($c, Db::class), KeyFactory::loadEncryptionKey($paths->encryptionKey()),
             )),
-            EntryRepository::class => factory(fn (ContainerInterface $c) => new EntryRepository($c->get(Db::class))),
+            MediaRepository::class => factory(fn (ContainerInterface $c) => new MediaRepository(self::get($c, Db::class))),
+            UploadPolicy::class => create(UploadPolicy::class),
+            MediaStorage::class => factory(function (ContainerInterface $c) use ($paths): MediaStorage {
+                $cfg = ConfigLoaderFactory::createFromJsonAndEnv($paths->config(), 'BASTION_', false);
+                if ($cfg->getRaw('media.driver', 'local') !== 's3') {
+                    return new LocalMediaStorage($paths->var()); // Degraded Mode (ADR-0011)
+                }
+                $raw = static fn (string $k): string => is_string($v = $cfg->getRaw($k)) ? $v : throw new \UnexpectedValueException("Config {$k} must be a string");
+                $s3 = new S3Config($raw('media.endpoint'), $raw('media.region'), $raw('media.bucket'), $raw('media.access_key'), $raw('media.secret_key'));
+                $f = self::get($c, Psr17Factory::class);
+                $http = HttpClient::create();
+                $http->setTimeout(15);
+                return new S3MediaStorage($s3, $http, $f, $f, self::get($c, ClockInterface::class));
+            }),
+            UploadMedia::class => factory(fn (ContainerInterface $c) => new UploadMedia(
+                new MediaSanitizer(self::get($c, UploadPolicy::class)), self::get($c, MediaStorage::class), self::get($c, MediaRepository::class),
+                self::get($c, UploadPolicy::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, LoggerInterface::class),
+            )),
+            MediaController::class => factory(fn (ContainerInterface $c) => new MediaController(
+                self::get($c, UploadMedia::class), self::get($c, MediaRepository::class), self::get($c, MediaStorage::class),
+                self::get($c, View::class), self::get($c, ResponseFactoryInterface::class),
+            )),
+            EntryRepository::class => factory(fn (ContainerInterface $c) => new EntryRepository(self::get($c, Db::class))),
             TwoStepLogin::class => factory(fn (ContainerInterface $c) => new TwoStepLogin(
-                new PasswordVerifier($c->get(AccountRepository::class)), $c->get(AccountRepository::class),
-                $c->get(AppSensor::class), $c->get(ClockInterface::class),
+                new PasswordVerifier(self::get($c, AccountRepository::class)), self::get($c, AccountRepository::class),
+                self::get($c, AppSensor::class), self::get($c, ClockInterface::class),
             )),
             BlockHtmlRenderer::class => factory(fn () => new BlockHtmlRenderer(TrustedHtmlToken::issue())),
             View::class => factory(function (ContainerInterface $c) use ($paths): View {
@@ -101,15 +127,15 @@ final class Kernel
                 return new View(
                     new Renderer(new DirectoryTemplateSource($paths->adminTemplates()), $cache('admin')),
                     new Renderer(new DirectoryTemplateSource($paths->theme('default')), $cache('theme')),
-                    $c->get(ResponseFactoryInterface::class),
+                    self::get($c, ResponseFactoryInterface::class),
                 );
             }),
             Installer::class => create(Installer::class)->constructor(get(Paths::class)),
 
-            PublicController::class => factory(fn (ContainerInterface $c) => new PublicController($c->get(EntryRepository::class), $c->get(BlockHtmlRenderer::class), $c->get(View::class))),
-            InstallController::class => factory(fn (ContainerInterface $c) => new InstallController($c->get(Installer::class), $c->get(View::class), $c->get(AppSensor::class))),
-            AuthController::class => factory(fn (ContainerInterface $c) => new AuthController($c->get(TwoStepLogin::class), $c->get(View::class))),
-            EntryController::class => factory(fn (ContainerInterface $c) => new EntryController($c->get(EntryRepository::class), $c->get(View::class), $c->get(AppSensor::class), $c->get(ClockInterface::class))),
+            PublicController::class => factory(fn (ContainerInterface $c) => new PublicController(self::get($c, EntryRepository::class), self::get($c, BlockHtmlRenderer::class), self::get($c, View::class))),
+            InstallController::class => factory(fn (ContainerInterface $c) => new InstallController(self::get($c, Installer::class), self::get($c, View::class), self::get($c, AppSensor::class))),
+            AuthController::class => factory(fn (ContainerInterface $c) => new AuthController(self::get($c, TwoStepLogin::class), self::get($c, View::class))),
+            EntryController::class => factory(fn (ContainerInterface $c) => new EntryController(self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, MediaRepository::class))),
 
             Router::class => factory(fn (ContainerInterface $c) => self::router($c, $paths, $https, $devCookies)),
         ]);
@@ -118,29 +144,29 @@ final class Kernel
 
     private static function router(ContainerInterface $c, Paths $paths, bool $https, bool $devCookies): Router
     {
-        $responses = $c->get(ResponseFactoryInterface::class);
-        $router = new Router($c, $c->get(LoggerInterface::class));
+        $responses = self::get($c, ResponseFactoryInterface::class);
+        $router = new Router($c, self::get($c, LoggerInterface::class));
         $router->setPropagateExceptions(true); // ошибки обработчиков видит наш ErrorHandler
         $router->middleware(
-            new ErrorHandler($responses, $c->get(LoggerInterface::class)),
+            new ErrorHandler($responses, self::get($c, LoggerInterface::class)),
             new SecurityHeaders($https),
             new InstallGuard($paths, $responses),
         );
 
         if (!$paths->isInstalled()) {
             // До установки нет БД: сессия в памяти процесса, CSRF всё равно обязателен.
-            $router->middleware(...self::sessionAndCsrf(new \Dzentota\Session\Storage\CacheStorage(new InstallSessionCache($paths)), $c, $devCookies, $c->get(AppSensor::class)));
+            $router->middleware(...self::sessionAndCsrf(new \Dzentota\Session\Storage\CacheStorage(new InstallSessionCache($paths)), $c, $devCookies, self::get($c, AppSensor::class)));
             $router->get('/install', [InstallController::class, 'form']);
             $router->post('/install', [InstallController::class, 'submit']);
             return $router;
         }
 
-        $db = $c->get(Db::class);
+        $db = self::get($c, Db::class);
         $encryptor = new SessionEncryptor(substr(hash('sha256', (string) file_get_contents($paths->cacheKey()) . 'session', true), 0, 32));
         $storage = new DatabaseStorage($db->getPdo(), Tables::SESSIONS, [$encryptor, 'encrypt'], [$encryptor, 'decrypt']);
         $router->middleware(
-            new AppSensorGate($c->get(AppSensor::class), $responses),
-            ...self::sessionAndCsrf($storage, $c, $devCookies, $c->get(AppSensor::class)),
+            new AppSensorGate(self::get($c, AppSensor::class), $responses),
+            ...self::sessionAndCsrf($storage, $c, $devCookies, self::get($c, AppSensor::class)),
         );
 
         $router->get('/', [PublicController::class, 'home']);
@@ -152,13 +178,17 @@ final class Kernel
         $router->post('/admin/2fa/setup', [AuthController::class, 'enrollSubmit']);
         $router->post('/admin/logout', [AuthController::class, 'logout']);
 
-        $staff = new RequireStaff($c->get(AccountRepository::class), $responses);
+        $staff = new RequireStaff(self::get($c, AccountRepository::class), $responses);
         $router->get('/admin', [EntryController::class, 'index'])->middleware($staff);
         $router->get('/admin/entries/new', [EntryController::class, 'create'])->middleware($staff);
         $router->post('/admin/entries', [EntryController::class, 'store'])->middleware($staff);
         $router->get('/admin/entries/{id}/edit', [EntryController::class, 'edit'])->where(['id' => EntryId::class])->middleware($staff);
         $router->post('/admin/entries/{id}', [EntryController::class, 'update'])->where(['id' => EntryId::class])->middleware($staff);
         $router->post('/admin/entries/{id}/publish', [EntryController::class, 'publish'])->where(['id' => EntryId::class])->middleware($staff);
+
+        $router->get('/admin/media', [MediaController::class, 'index'])->middleware($staff);
+        $router->post('/admin/media', [MediaController::class, 'store'])->middleware($staff);
+        $router->get('/media/{id}', [MediaController::class, 'serve'])->where(['id' => MediaId::class]);
 
         $router->get('/{slug}', [PublicController::class, 'show'])->where(['slug' => Slug::class]);
         return $router;
@@ -174,14 +204,26 @@ final class Kernel
         return [
             new SessionMiddleware($storage, $cookie, 1800, 14400, false, true, false),
             new CsrfMiddleware(
-                new SessionCsrfStrategy($sensor), $c->get(LoggerInterface::class), [], null,
+                new SessionCsrfStrategy($sensor), self::get($c, LoggerInterface::class), [], null,
                 failureResponseFactory: static function () use ($c): \Psr\Http\Message\ResponseInterface {
-                    $r = $c->get(ResponseFactoryInterface::class)->createResponse(403)->withHeader('Content-Type', 'text/plain; charset=utf-8');
+                    $r = self::get($c, ResponseFactoryInterface::class)->createResponse(403)->withHeader('Content-Type', 'text/plain; charset=utf-8');
                     $r->getBody()->write("The form has expired. Go back, reload the page and try again.\n");
                     return $r;
                 },
             ),
         ];
+    }
+
+    /**
+     * Типизированный доступ к PSR-11 контейнеру: get() возвращает mixed.
+     * @template T of object
+     * @param class-string<T> $id
+     * @return T
+     */
+    private static function get(ContainerInterface $c, string $id): object
+    {
+        $service = $c->get($id);
+        return $service instanceof $id ? $service : throw new \LogicException("Container returned unexpected type for {$id}");
     }
 
     private static function dir(string $d): string

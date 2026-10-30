@@ -6,6 +6,7 @@ namespace Bastion\Installation;
 use Bastion\IdentityAccess\Domain\{NewPassword, Role, Username};
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
 use Bastion\Infrastructure\Database\{Connection, Schema};
+use Bastion\Media\Infrastructure\S3Config;
 use ParagonIE\Halite\KeyFactory;
 use HybridTM\Attributes\{AbuserStory, AssetId, Mitigation};
 
@@ -46,7 +47,7 @@ final class Installer
     /**
      * @param array{driver: DbDriver, host?: DbHost, port?: int, name?: DbName, user?: DbName, password?: string} $db
      */
-    public function install(array $db, Username $admin, NewPassword $password): void
+    public function install(array $db, Username $admin, NewPassword $password, ?S3Config $s3 = null): void
     {
         if ($this->paths->isInstalled()) {
             throw new \LogicException('Already installed');
@@ -56,6 +57,10 @@ final class Installer
         }
 
         $config = ['db' => ['driver' => $db['driver']->toNative()]];
+        $config['media'] = $s3 === null ? ['driver' => 'local'] : [
+            'driver' => 's3', 'endpoint' => $s3->endpoint, 'region' => $s3->region, 'bucket' => $s3->bucket,
+            'access_key' => $s3->accessKey, 'secret_key' => $s3->secretKey(),
+        ];
         if ($db['driver']->toNative() === 'mysql') {
             $config['db'] += [
                 'host' => $db['host']->toNative(), 'port' => $db['port'], 'name' => $db['name']->toNative(),

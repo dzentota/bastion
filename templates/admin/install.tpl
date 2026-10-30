@@ -16,6 +16,15 @@
     <label>Password <input name="db_password" type="password" autocomplete="off"></label>
   </fieldset>
   <fieldset>
+    <legend>Media storage (recommended)</legend>
+    <p class="hint">Uploads are safest in S3-compatible object storage (Cloudflare R2, Backblaze B2, AWS S3): files never sit next to your site's code. Leave empty to store files on this server in reduced security mode — you can connect storage later.</p>
+    <label>Endpoint (https://…) <input name="s3_endpoint" value="{{ s3.endpoint | attr }}" placeholder="https://ACCOUNT.r2.cloudflarestorage.com"></label>
+    <label>Bucket <input name="s3_bucket" value="{{ s3.bucket | attr }}"></label>
+    <label>Region <input name="s3_region" value="{{ s3.region | attr }}" placeholder="auto"></label>
+    <label>Access key <input name="s3_access_key" value="{{ s3.access_key | attr }}" autocomplete="off"></label>
+    <label>Secret key <input name="s3_secret_key" type="password" autocomplete="off"></label>
+  </fieldset>
+  <fieldset>
     <legend>Administrator</legend>
     <label>Username <input name="username" value="{{ username | attr }}" required autocomplete="username"></label>
     <label>Password (12+ characters, hard to guess) <input name="password" type="password" required minlength="12" autocomplete="new-password"></label>

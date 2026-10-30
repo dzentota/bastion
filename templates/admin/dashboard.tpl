@@ -5,7 +5,7 @@
   <form method="post" action="/admin/logout"><input type="hidden" name="_token" value="{{ csrf | attr }}"><button class="link">Sign out</button></form>
 </header>
 <h1>Posts</h1>
-<p><a class="button" href="/admin/entries/new">New post</a></p>
+<p><a class="button" href="/admin/entries/new">New post</a> <a href="/admin/media">Media library</a></p>
 <table>
   <thead><tr><th>Title</th><th>Status</th><th></th></tr></thead>
   <tbody>

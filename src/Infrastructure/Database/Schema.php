@@ -48,6 +48,16 @@ final class Schema
                 until_ts INTEGER NOT NULL,
                 PRIMARY KEY (actor_key, response)
             ){$suffix}",
+            "CREATE TABLE IF NOT EXISTS ?_media (
+                id VARCHAR(32) PRIMARY KEY,
+                kind VARCHAR(8) NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                bytes INTEGER NOT NULL,
+                width INTEGER NULL,
+                height INTEGER NULL,
+                uploaded_by {$key} NOT NULL,
+                uploaded_at INTEGER NOT NULL
+            ){$suffix}",
             "CREATE TABLE IF NOT EXISTS ?_audit (
                 id INTEGER PRIMARY KEY " . ($driver === 'mysql' ? 'AUTO_INCREMENT' : 'AUTOINCREMENT') . ",
                 actor_id {$key} NULL,

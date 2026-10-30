@@ -4,3 +4,4 @@ body{margin:0;background:var(--bg);color:var(--fg);font:18px/1.65 Georgia,serif}
 main,header.site,footer.site{max-width:680px;margin:0 auto;padding:16px}
 a{color:var(--accent)}time{color:var(--muted);font-size:15px}blockquote{border-left:3px solid var(--muted);margin:0;padding-left:16px;color:var(--muted)}
 footer.site{color:var(--muted);font-size:14px}
+figure{margin:24px 0}figure img{max-width:100%;height:auto}

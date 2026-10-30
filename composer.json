@@ -6,28 +6,32 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "require": {
-        "php": ">=8.3",
+        "ext-fileinfo": "*",
+        "ext-gd": "*",
+        "ext-mbstring": "*",
         "ext-pdo": "*",
         "ext-sodium": "*",
-        "ext-mbstring": "*",
-        "dzentota/router": "dev-master",
-        "dzentota/session": "dev-main",
-        "dzentota/identity": "dev-main",
-        "dzentota/secure-db": "dev-main",
+        "php": ">=8.3",
+        "php-di/php-di": "^7.0",
+        "bjeavons/zxcvbn-php": "^1.4",
         "dzentota/config-loader": "dev-main",
-        "dzentota/typedvalue": "dev-master",
-        "dzentota/respected-typedvalue": "dev-master",
+        "dzentota/dns-resolver": "dev-main",
         "dzentota/domain-primitives": "dev-main",
+        "dzentota/http-client": "dev-main",
+        "dzentota/identity": "dev-main",
+        "dzentota/respected-typedvalue": "dev-master",
+        "dzentota/router": "dev-master",
+        "dzentota/secure-db": "dev-main",
+        "dzentota/session": "dev-main",
         "dzentota/template-engine": "dev-main",
         "dzentota/template-variable": "dev-main",
+        "dzentota/typedvalue": "dev-master",
+        "lbuchs/webauthn": "^2.2",
         "nyholm/psr7": "^1.8",
         "nyholm/psr7-server": "^1.1",
-        "php-di/php-di": "^7.0",
-        "paragonie/halite": "^5.1",
         "paragonie/csp-builder": "^3.0",
-        "spomky-labs/otphp": "^11.3",
-        "lbuchs/webauthn": "^2.2",
-        "bjeavons/zxcvbn-php": "^1.4"
+        "paragonie/halite": "^5.1",
+        "spomky-labs/otphp": "^11.3"
     },
     "require-dev": {
         "hybridtm/hybridtm": "dev-main",
@@ -94,6 +98,16 @@
         {
             "type": "vcs",
             "url": "https://github.com/dzentota/template-variable",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/dzentota/http-client",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/dzentota/dns-resolver",
             "no-api": true
         }
     ],

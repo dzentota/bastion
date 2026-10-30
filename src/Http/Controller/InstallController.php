@@ -6,6 +6,11 @@ namespace Bastion\Http\Controller;
 use Bastion\Http\View;
 use Bastion\IdentityAccess\Domain\{NewPassword, Username};
 use Bastion\Installation\{DbDriver, DbHost, DbName, Installer};
+use Bastion\Media\Domain\{MediaId, MediaKind, StorageKey};
+use Bastion\Media\Infrastructure\{S3Config, S3MediaStorage};
+use Bastion\Shared\Infrastructure\SystemClock;
+use Dzentota\HttpClient\HttpClient;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use Bastion\SecurityMonitoring\Domain\{ActorKey, AppSensor, DetectionPoint};
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
 
@@ -18,7 +23,9 @@ final class InstallController
     public function form(ServerRequestInterface $request): ResponseInterface
     {
         $this->installer->ensureToken();
-        return $this->view->admin($request, 'install', ['driver_mysql' => false]);
+        return $this->view->admin($request, 'install', [
+            's3' => ['endpoint' => Input::string($request, 's3_endpoint', 300), 'bucket' => Input::string($request, 's3_bucket', 63),
+                'region' => Input::string($request, 's3_region', 32), 'access_key' => Input::string($request, 's3_access_key', 128)],'driver_mysql' => false]);
     }
 
     public function submit(ServerRequestInterface $request): ResponseInterface
@@ -50,9 +57,26 @@ final class InstallController
             $errors[] = 'Choose a database driver';
         }
 
-        if ($errors === []) {
+        $s3 = null;
+        if (Input::string($request, 's3_endpoint', 300) !== '') {
             try {
-                $this->installer->install($db, $username, $password);
+                $s3 = new S3Config(
+                    Input::string($request, 's3_endpoint', 300), Input::string($request, 's3_region', 32) ?: 'auto',
+                    Input::string($request, 's3_bucket', 63), Input::string($request, 's3_access_key', 128), Input::string($request, 's3_secret_key', 256),
+                );
+                if ($errors === []) {
+                    $this->probe($s3);
+                }
+            } catch (\InvalidArgumentException $e) {
+                $errors[] = 'Storage: ' . $e->getMessage();
+            } catch (\Throwable) {
+                $errors[] = 'Storage: could not write a test file to the bucket. Check the endpoint, bucket and keys.';
+            }
+        }
+
+        if ($errors === [] && $username !== null && $password !== null) {
+            try {
+                $this->installer->install($db, $username, $password, $s3);
                 return $this->view->redirect('/admin/login');
             } catch (\PDOException) {
                 $errors[] = 'Cannot connect to the database with these settings';
@@ -63,5 +87,21 @@ final class InstallController
             'username' => Input::string($request, 'username', 64),
             'driver_mysql' => $driver?->toNative() === 'mysql',
         ], 422);
+    }
+
+    /** Проверка доступа: запись, чтение и удаление тестового объекта через http-client (SSRF-защита). */
+    private function probe(S3Config $s3): void
+    {
+        $f = new Psr17Factory();
+        $http = HttpClient::create();
+        $http->setTimeout(10);
+        $storage = new S3MediaStorage($s3, $http, $f, $f, new SystemClock());
+        $key = StorageKey::for(MediaId::generate(), MediaKind::Png);
+        $storage->put($key, 'bastion-probe', MediaKind::Png);
+        $ok = $storage->get($key) === 'bastion-probe';
+        $storage->delete($key);
+        if (!$ok) {
+            throw new \RuntimeException('Probe mismatch');
+        }
     }
 }

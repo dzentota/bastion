@@ -43,4 +43,18 @@ final class InstallerAttackTest extends TestCase
         self::assertSame(404, $attacker->get('/install')->getStatusCode());
         self::assertSame(404, $attacker->post('/install', self::FORM + ['install_token' => 'x'], withToken: false)->getStatusCode());
     }
+
+    /** Abuser story: storage-endpoint-ssrf — установщик не ходит на внутренние адреса. */
+    public function testInstallerRejectsInternalStorageEndpoint(): void
+    {
+        $h = new HttpHarness();
+        $h->get('/install');
+        $token = trim((string) file_get_contents($h->paths->installToken()));
+        $res = $h->post('/install', self::FORM + ['install_token' => $token, 's3_endpoint' => 'https://169.254.169.254',
+            's3_bucket' => 'media', 's3_access_key' => 'AKIAIOSFODNN7EXAMPLE', 's3_secret_key' => 'wJalrXUtnFEMI/K7MDENG']);
+        self::assertSame(422, $res->getStatusCode());
+        self::assertStringContainsString('private, reserved', $h->body());
+        self::assertStringNotContainsString('wJalrXUtnFEMI', $h->body(), 'секрет не отражается обратно в форму');
+        self::assertFalse($h->paths->isInstalled());
+    }
 }

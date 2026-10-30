@@ -16,6 +16,8 @@ enum DetectionPoint: string
     case IE2 = 'IE2';   // Violation of implemented white lists (invalid domain primitive)
     case RE6 = 'RE6';   // POST without CSRF token / invalid token
     case ACE3 = 'ACE3'; // Force browsing attempt (forbidden admin action)
+    case FIO1 = 'FIO1'; // Detect large individual file
+    case FIO2 = 'FIO2'; // Detect large number of file uploads
     case STE1 = 'STE1'; // Integrity violation: tampered template cache / installer probing
 
     /** @return array{threshold: int, window: int, response: ResponseAction, duration: int} */
@@ -29,6 +31,8 @@ enum DetectionPoint: string
             self::IE2 => ['threshold' => 30, 'window' => 300, 'response' => ResponseAction::Throttle, 'duration' => 600],
             self::RE6 => ['threshold' => 5, 'window' => 600, 'response' => ResponseAction::Throttle, 'duration' => 600],
             self::ACE3 => ['threshold' => 3, 'window' => 600, 'response' => ResponseAction::Logout, 'duration' => 0],
+            self::FIO1 => ['threshold' => 5, 'window' => 3600, 'response' => ResponseAction::Throttle, 'duration' => 3600],
+            self::FIO2 => ['threshold' => 3, 'window' => 3600, 'response' => ResponseAction::Notify, 'duration' => 0],
             self::STE1 => ['threshold' => 1, 'window' => 60, 'response' => ResponseAction::Notify, 'duration' => 0],
         };
     }

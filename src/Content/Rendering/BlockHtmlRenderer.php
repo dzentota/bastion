@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\Content\Rendering;
 
-use Bastion\Content\Domain\Block\{Block, BlockList, Heading, Paragraph, Quote};
+use Bastion\Content\Domain\Block\{Block, BlockList, Heading, Image, Paragraph, Quote};
 use Bastion\Theming\Dsl\{SafeHtml, TrustedHtmlToken};
 use HybridTM\Attributes\{AbuserStory, AssetId, Mitigation};
 
@@ -34,6 +34,11 @@ final class BlockHtmlRenderer
         return match (true) {
             $block instanceof Paragraph => '<p>' . $this->text($block->text->toNative()) . '</p>',
             $block instanceof Heading => sprintf('<h%1$d>%2$s</h%1$d>', $block->level, $this->esc($block->text->toNative())),
+            $block instanceof Image => sprintf(
+                '<figure><img src="/media/%s" alt="%s" loading="lazy" decoding="async"></figure>',
+                $block->media->toNative(), // 32 hex — безопасен в атрибуте по построению
+                $this->esc($block->alt->toNative()),
+            ),
             $block instanceof Quote => '<blockquote><p>' . $this->text($block->text->toNative()) . '</p></blockquote>',
             default => throw new \LogicException('Unrenderable block ' . $block::type()),
         };

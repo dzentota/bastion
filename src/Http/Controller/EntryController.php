@@ -4,7 +4,9 @@ declare(strict_types=1);
 namespace Bastion\Http\Controller;
 
 use Bastion\Content\Domain\{Entry, EntryId, EntryType, Slug, Title};
-use Bastion\Content\Domain\Block\{Block, BlockList, Heading, InvalidBlock, Paragraph, Quote};
+use Bastion\Content\Domain\Block\{Block, BlockList, Heading, Image, InvalidBlock, Paragraph, Quote};
+use Bastion\Media\Domain\{MediaId, MediaItem};
+use Bastion\Media\Infrastructure\MediaRepository;
 use Bastion\Content\Infrastructure\EntryRepository;
 use Bastion\Http\Middleware\RequireStaff;
 use Bastion\Http\View;
@@ -24,6 +26,7 @@ final class EntryController
         private readonly View $view,
         private readonly AppSensor $sensor,
         private readonly \Psr\Clock\ClockInterface $clock,
+        private readonly MediaRepository $media,
     ) {
     }
 
@@ -50,7 +53,10 @@ final class EntryController
         }
         $rows = [];
         foreach ($entry->blocks() as $b) {
-            $rows[] = ['type' => $b::type()] + array_map('strval', $b->toArray());
+            $data = array_map('strval', $b->toArray());
+            $rows[] = $b instanceof Image
+                ? ['type' => 'image', 'media' => $data['media'], 'text' => $data['alt']]
+                : ['type' => $b::type()] + $data;
         }
         return $this->editor($request, $entry, ['title' => $entry->title(), 'slug' => $entry->slug()], $rows, []);
     }
@@ -120,11 +126,19 @@ final class EntryController
     {
         $blocks = [];
         foreach ($rows as $row) {
-            $text = $row['text'] ?? '';
+            $text = str_replace("\r\n", "\n", $row['text'] ?? '');
+            if (($row['type'] ?? '') === 'image') {
+                if (($row['media'] ?? '') === '') {
+                    continue;
+                }
+                $image = Image::fromArray(['media' => $row['media'], 'alt' => trim($text)]);
+                $this->media->find($image->media) ?? throw new InvalidBlock('image.media not found');
+                $blocks[] = $image;
+                continue;
+            }
             if (trim($text) === '') {
                 continue; // пустые строки редактора игнорируются
             }
-            $text = str_replace("\r\n", "\n", $text);
             $blocks[] = match ($row['type'] ?? '') {
                 'paragraph' => Paragraph::fromArray(['text' => $text]),
                 'quote' => Quote::fromArray(['text' => $text]),
@@ -145,10 +159,14 @@ final class EntryController
         while (count($rows) < self::EDITOR_ROWS) {
             $rows[] = ['type' => 'paragraph', 'text' => ''];
         }
+        $library = array_filter($this->media->latest(100), static fn (MediaItem $m) => $m->kind->isImage());
         $rows = array_map(static fn (array $r, int $i) => [
             'i' => $i, 'text' => $r['text'] ?? '',
             'is_paragraph' => ($r['type'] ?? '') === 'paragraph', 'is_heading' => ($r['type'] ?? '') === 'heading',
-            'is_quote' => ($r['type'] ?? '') === 'quote',
+            'is_quote' => ($r['type'] ?? '') === 'quote', 'is_image' => ($r['type'] ?? '') === 'image',
+            'media' => array_values(array_map(static fn (MediaItem $m) => [
+                'id' => $m->id->toNative(), 'name' => $m->name, 'selected' => ($r['media'] ?? '') === $m->id->toNative(),
+            ], $library)),
         ], $rows, array_keys($rows));
         $account = $this->account($request);
         return $this->view->admin($request, 'editor', [

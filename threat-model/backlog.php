@@ -9,9 +9,6 @@ declare(strict_types=1);
 return [
     'reset-token-theft',     // Identity: сброс пароля (split-token)
     'term-enumeration-dos',  // Taxonomy
-    'upload-rce',            // Media
-    'media-path-traversal',  // Media
-    'exif-leak',             // Media
     'comment-xss',           // Comments
     'comment-spam-flood',    // Comments
     'malicious-extension',   // Extensions (Static Gate + Gossamer)
