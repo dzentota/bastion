@@ -10,16 +10,16 @@
         "ext-pdo": "*",
         "ext-sodium": "*",
         "ext-mbstring": "*",
-        "dzentota/router": "dev-master",
-        "dzentota/session": "dev-main",
-        "dzentota/identity": "dev-main",
-        "dzentota/secure-db": "dev-main",
+        "dzentota/router": "dev-fix/bastion-dogfooding as dev-master",
+        "dzentota/session": "dev-fix/bastion-dogfooding as dev-main",
+        "dzentota/identity": "dev-fix/bastion-dogfooding as dev-main",
+        "dzentota/secure-db": "dev-fix/bastion-dogfooding as dev-main",
         "dzentota/config-loader": "dev-main",
-        "dzentota/typedvalue": "dev-master",
+        "dzentota/typedvalue": "dev-fix/bastion-dogfooding as dev-master",
         "dzentota/respected-typedvalue": "dev-master",
         "dzentota/domain-primitives": "dev-main",
-        "dzentota/template-engine": "dev-main",
-        "dzentota/template-variable": "dev-main",
+        "dzentota/template-engine": "dev-fix/bastion-dogfooding as dev-main",
+        "dzentota/template-variable": "dev-fix/bastion-dogfooding as dev-main",
         "nyholm/psr7": "^1.8",
         "nyholm/psr7-server": "^1.1",
         "php-di/php-di": "^7.0",
@@ -30,7 +30,7 @@
         "bjeavons/zxcvbn-php": "^1.4"
     },
     "require-dev": {
-        "hybridtm/hybridtm": "dev-main",
+        "hybridtm/hybridtm": "dev-fix/bastion-dogfooding as dev-main",
         "phpunit/phpunit": "^11.5",
         "phpstan/phpstan": "^2.1",
         "infection/infection": "^0.29"
@@ -89,6 +89,11 @@
         {
             "type": "vcs",
             "url": "https://github.com/dzentota/hybridtm",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/dzentota/template-variable",
             "no-api": true
         }
     ],

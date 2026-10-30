@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6676adc9d7f7249b5fec4b7c4673469d",
+    "content-hash": "9957f55036cb5439ce91e75a85afd178",
     "packages": [
         {
             "name": "bjeavons/zxcvbn-php",
@@ -326,22 +326,22 @@
         },
         {
             "name": "dzentota/identity",
-            "version": "dev-main",
+            "version": "dev-fix/bastion-dogfooding",
             "source": {
                 "type": "git",
                 "url": "https://github.com/dzentota/identity",
-                "reference": "fd61e397174306595066cec9b6c23179f6c80bf8"
+                "reference": "387cfd06b13953df2f0d77448ffbc9c482046d1d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/dzentota/identity/zipball/fd61e397174306595066cec9b6c23179f6c80bf8",
-                "reference": "fd61e397174306595066cec9b6c23179f6c80bf8",
+                "url": "https://api.github.com/repos/dzentota/identity/zipball/387cfd06b13953df2f0d77448ffbc9c482046d1d",
+                "reference": "387cfd06b13953df2f0d77448ffbc9c482046d1d",
                 "shasum": ""
             },
             "require": {
                 "dzentota/session": "dev-main",
                 "paragonie/paseto": "^3.5",
-                "php": "^7.4|^8.0",
+                "php": ">=8.3",
                 "psr/http-factory": "^1.0",
                 "psr/http-message": "^1.0",
                 "psr/http-server-handler": "^1.0",
@@ -353,7 +353,6 @@
                 "phpunit/phpunit": "^9.0",
                 "squizlabs/php_codesniffer": "^3.6"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -375,7 +374,7 @@
                 }
             ],
             "description": "A secure and extensible authentication library for PHP applications",
-            "time": "2026-03-22T23:34:16+00:00"
+            "time": "2026-10-30T19:00:15+00:00"
         },
         {
             "name": "dzentota/respected-typedvalue",
@@ -433,23 +432,23 @@
         },
         {
             "name": "dzentota/router",
-            "version": "dev-master",
+            "version": "dev-fix/bastion-dogfooding",
             "source": {
                 "type": "git",
                 "url": "https://github.com/dzentota/router",
-                "reference": "0cc8c05de01f705e4604f8004f00b4fa0e1246ce"
+                "reference": "e9da433e4b239b93a4eb92cd88a695f5317412ff"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/dzentota/router/zipball/0cc8c05de01f705e4604f8004f00b4fa0e1246ce",
-                "reference": "0cc8c05de01f705e4604f8004f00b4fa0e1246ce",
+                "url": "https://api.github.com/repos/dzentota/router/zipball/e9da433e4b239b93a4eb92cd88a695f5317412ff",
+                "reference": "e9da433e4b239b93a4eb92cd88a695f5317412ff",
                 "shasum": ""
             },
             "require": {
                 "dzentota/typedvalue": "dev-master",
                 "ext-mbstring": "*",
                 "nyholm/psr7": "^1.4",
-                "php": ">=8.2",
+                "php": ">=8.3",
                 "psr/container": "^2.0",
                 "psr/http-message": "^1.0",
                 "psr/http-server-handler": "^1.0",
@@ -460,7 +459,6 @@
             "require-dev": {
                 "phpunit/phpunit": "^9.5"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -477,25 +475,25 @@
                 }
             ],
             "description": "Fast and flexible security aware router.",
-            "time": "2026-03-25T17:50:03+00:00"
+            "time": "2026-10-30T18:56:55+00:00"
         },
         {
             "name": "dzentota/secure-db",
-            "version": "dev-main",
+            "version": "dev-fix/bastion-dogfooding",
             "source": {
                 "type": "git",
                 "url": "https://github.com/dzentota/secure-db",
-                "reference": "4cb2a588cd526d54fdb3f745dcd0c51891db03e4"
+                "reference": "309fab17ff4801431bfddaf6e503f49475cb396b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/dzentota/secure-db/zipball/4cb2a588cd526d54fdb3f745dcd0c51891db03e4",
-                "reference": "4cb2a588cd526d54fdb3f745dcd0c51891db03e4",
+                "url": "https://api.github.com/repos/dzentota/secure-db/zipball/309fab17ff4801431bfddaf6e503f49475cb396b",
+                "reference": "309fab17ff4801431bfddaf6e503f49475cb396b",
                 "shasum": ""
             },
             "require": {
                 "ext-pdo": "*",
-                "php": ">=8.1"
+                "php": ">=8.3"
             },
             "require-dev": {
                 "phpunit/phpunit": "^11.0"
@@ -503,7 +501,6 @@
             "suggest": {
                 "dzentota/respected-typedvalue": "For robust input validation and type safety"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -538,25 +535,25 @@
                 "security",
                 "sql-injection"
             ],
-            "time": "2026-03-25T21:11:47+00:00"
+            "time": "2026-10-30T19:01:08+00:00"
         },
         {
             "name": "dzentota/session",
-            "version": "dev-main",
+            "version": "dev-fix/bastion-dogfooding",
             "source": {
                 "type": "git",
                 "url": "https://github.com/dzentota/session",
-                "reference": "e8ca2332c8d4005b4ab7e397516d6d2a3209f424"
+                "reference": "bdb748a6fe093bec149bff6f9d118084fc05cae9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/dzentota/session/zipball/e8ca2332c8d4005b4ab7e397516d6d2a3209f424",
-                "reference": "e8ca2332c8d4005b4ab7e397516d6d2a3209f424",
+                "url": "https://api.github.com/repos/dzentota/session/zipball/bdb748a6fe093bec149bff6f9d118084fc05cae9",
+                "reference": "bdb748a6fe093bec149bff6f9d118084fc05cae9",
                 "shasum": ""
             },
             "require": {
                 "ext-openssl": "*",
-                "php": "^8.1",
+                "php": ">=8.3",
                 "psr/http-message": "^1.0",
                 "psr/http-server-middleware": "^1.0",
                 "psr/simple-cache": "^3.0",
@@ -567,7 +564,6 @@
                 "phpunit/phpunit": "^9.5",
                 "squizlabs/php_codesniffer": "^3.6"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -589,33 +585,32 @@
                 }
             ],
             "description": "Secure session management library with a focus on security and type safety",
-            "time": "2025-07-17T20:05:12+00:00"
+            "time": "2026-10-30T19:00:15+00:00"
         },
         {
             "name": "dzentota/template-engine",
-            "version": "dev-main",
+            "version": "dev-fix/bastion-dogfooding",
             "source": {
                 "type": "git",
                 "url": "https://github.com/dzentota/template-engine",
-                "reference": "b2c0c1499031121cae8439ddcd68cfe5b7bb5b43"
+                "reference": "3a807d649b11a97fd43d199084edc418a65ef497"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/dzentota/template-engine/zipball/b2c0c1499031121cae8439ddcd68cfe5b7bb5b43",
-                "reference": "b2c0c1499031121cae8439ddcd68cfe5b7bb5b43",
+                "url": "https://api.github.com/repos/dzentota/template-engine/zipball/3a807d649b11a97fd43d199084edc418a65ef497",
+                "reference": "3a807d649b11a97fd43d199084edc418a65ef497",
                 "shasum": ""
             },
             "require": {
                 "dzentota/template-variable": "dev-main",
                 "dzentota/typedvalue": "dev-master",
-                "php": "^8.1"
+                "php": ">=8.3"
             },
             "require-dev": {
                 "phpstan/phpstan": "^1.0",
                 "phpunit/phpunit": "^10.0",
                 "squizlabs/php_codesniffer": "^3.7"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -662,32 +657,31 @@
                 "template-engine",
                 "xss-protection"
             ],
-            "time": "2026-03-25T20:32:36+00:00"
+            "time": "2026-10-30T18:58:31+00:00"
         },
         {
             "name": "dzentota/template-variable",
-            "version": "dev-main",
+            "version": "dev-fix/bastion-dogfooding",
             "source": {
                 "type": "git",
                 "url": "https://github.com/dzentota/template-variable",
-                "reference": "33b8e157452e8c27e826438fe23f25eaf8760ab7"
+                "reference": "b772b9acbddfbfdb9c5b02ceb5b4921dcb328b88"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/dzentota/template-variable/zipball/33b8e157452e8c27e826438fe23f25eaf8760ab7",
-                "reference": "33b8e157452e8c27e826438fe23f25eaf8760ab7",
+                "url": "https://api.github.com/repos/dzentota/template-variable/zipball/b772b9acbddfbfdb9c5b02ceb5b4921dcb328b88",
+                "reference": "b772b9acbddfbfdb9c5b02ceb5b4921dcb328b88",
                 "shasum": ""
             },
             "require": {
                 "dzentota/typedvalue": "dev-master",
-                "php": ">=8.1"
+                "php": ">=8.3"
             },
             "require-dev": {
                 "friendsofphp/php-cs-fixer": "^3.0",
                 "phpstan/phpstan": "^1.0",
                 "phpunit/phpunit": "^10.0"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -720,35 +714,43 @@
                 }
             ],
             "description": "A secure template variable library that provides context-aware escaping for PHP templates using TypedValue objects",
-            "time": "2025-07-07T21:11:53+00:00"
+            "time": "2026-10-30T18:57:04+00:00"
         },
         {
             "name": "dzentota/typedvalue",
-            "version": "dev-master",
+            "version": "dev-fix/bastion-dogfooding",
             "source": {
                 "type": "git",
                 "url": "https://github.com/dzentota/typedvalue",
-                "reference": "81e0ad42c26a116983ffa5e7b134c427c89ba1fe"
+                "reference": "59c515ecff798d1b30131d4e6d70e7015e498234"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/dzentota/typedvalue/zipball/81e0ad42c26a116983ffa5e7b134c427c89ba1fe",
-                "reference": "81e0ad42c26a116983ffa5e7b134c427c89ba1fe",
+                "url": "https://api.github.com/repos/dzentota/typedvalue/zipball/59c515ecff798d1b30131d4e6d70e7015e498234",
+                "reference": "59c515ecff798d1b30131d4e6d70e7015e498234",
                 "shasum": ""
             },
             "require": {
-                "php": "^8.1"
+                "php": ">=8.3"
             },
             "require-dev": {
-                "phpunit/phpunit": "^6.2 || ^9.3"
+                "phpstan/phpstan": "^2.1",
+                "phpunit/phpunit": "^9.6"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
                     "dzentota\\TypedValue\\": "src/",
                     "tests\\dzentota\\TypedValue\\": "tests/"
                 }
+            },
+            "scripts": {
+                "test": [
+                    "phpunit"
+                ],
+                "phpstan": [
+                    "phpstan analyse --no-progress"
+                ]
             },
             "license": [
                 "MIT"
@@ -759,8 +761,8 @@
                     "email": "webtota@gmail.com"
                 }
             ],
-            "description": "A PHP 8.1+ typed values (value objects) helper library with modern enum support and comprehensive security features.",
-            "time": "2025-07-11T22:48:21+00:00"
+            "description": "A PHP 8.3+ typed values (value objects) helper library with modern enum support and comprehensive security features.",
+            "time": "2026-10-30T18:57:43+00:00"
         },
         {
             "name": "genkgo/php-asn1",
@@ -3362,16 +3364,16 @@
         },
         {
             "name": "hybridtm/hybridtm",
-            "version": "dev-main",
+            "version": "dev-fix/bastion-dogfooding",
             "source": {
                 "type": "git",
                 "url": "https://github.com/dzentota/hybridtm",
-                "reference": "2cf717a474417fbd1cc2e4bbd552fb459f1687a7"
+                "reference": "aa7614d58a9c5d28b442e419057ebec3bf2a9762"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/dzentota/hybridtm/zipball/2cf717a474417fbd1cc2e4bbd552fb459f1687a7",
-                "reference": "2cf717a474417fbd1cc2e4bbd552fb459f1687a7",
+                "url": "https://api.github.com/repos/dzentota/hybridtm/zipball/aa7614d58a9c5d28b442e419057ebec3bf2a9762",
+                "reference": "aa7614d58a9c5d28b442e419057ebec3bf2a9762",
                 "shasum": ""
             },
             "require": {
@@ -3388,7 +3390,6 @@
                 "phpstan/phpstan": "^2.1",
                 "phpunit/phpunit": "^11"
             },
-            "default-branch": true,
             "bin": [
                 "bin/hybridtm"
             ],
@@ -3443,7 +3444,7 @@
                 "threagile",
                 "threat-modeling"
             ],
-            "time": "2026-08-21T21:17:26+00:00"
+            "time": "2026-10-30T18:59:15+00:00"
         },
         {
             "name": "infection/abstract-testframework-adapter",
@@ -7452,7 +7453,56 @@
             "time": "2025-10-29T15:56:20+00:00"
         }
     ],
-    "aliases": [],
+    "aliases": [
+        {
+            "package": "dzentota/identity",
+            "version": "dev-fix/bastion-dogfooding",
+            "alias": "dev-main",
+            "alias_normalized": "dev-main"
+        },
+        {
+            "package": "dzentota/router",
+            "version": "dev-fix/bastion-dogfooding",
+            "alias": "dev-master",
+            "alias_normalized": "dev-master"
+        },
+        {
+            "package": "dzentota/secure-db",
+            "version": "dev-fix/bastion-dogfooding",
+            "alias": "dev-main",
+            "alias_normalized": "dev-main"
+        },
+        {
+            "package": "dzentota/session",
+            "version": "dev-fix/bastion-dogfooding",
+            "alias": "dev-main",
+            "alias_normalized": "dev-main"
+        },
+        {
+            "package": "dzentota/template-engine",
+            "version": "dev-fix/bastion-dogfooding",
+            "alias": "dev-main",
+            "alias_normalized": "dev-main"
+        },
+        {
+            "package": "dzentota/template-variable",
+            "version": "dev-fix/bastion-dogfooding",
+            "alias": "dev-main",
+            "alias_normalized": "dev-main"
+        },
+        {
+            "package": "dzentota/typedvalue",
+            "version": "dev-fix/bastion-dogfooding",
+            "alias": "dev-master",
+            "alias_normalized": "dev-master"
+        },
+        {
+            "package": "hybridtm/hybridtm",
+            "version": "dev-fix/bastion-dogfooding",
+            "alias": "dev-main",
+            "alias_normalized": "dev-main"
+        }
+    ],
     "minimum-stability": "dev",
     "stability-flags": {
         "dzentota/config-loader": 20,
