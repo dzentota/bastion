@@ -1,0 +1,35 @@
+#!/usr/bin/env php
+<?php
+// CI-гейт модели угроз (ADR-0008): каждая Abuser Story покрыта в коде или явно в бэклоге.
+declare(strict_types=1);
+
+$root = dirname(__DIR__);
+$cmd = sprintf('php %s/bin/hybridtm analyze --infra=%s/threat-model.php --source=%s/src --kb=%s/vendor/hybridtm/hybridtm/apps/api/kb --check-stories --format=json',
+    $root, $root, $root, $root);
+exec($cmd . ' 2>/dev/null', $out, $code);
+$report = json_decode(implode("\n", $out), true);
+if (!is_array($report) || !isset($report['storyCoverage'])) {
+    fwrite(STDERR, "hybridtm analyze failed (exit {$code})\n");
+    exit(2);
+}
+$backlog = require $root . '/threat-model/backlog.php';
+$fail = false;
+foreach ($report['storyCoverage'] as $s) {
+    $inBacklog = in_array($s['storyId'], $backlog, true);
+    if ($s['status'] === 'covered' && $inBacklog) {
+        echo "STALE   {$s['storyId']}: covered in code — remove it from threat-model/backlog.php\n";
+        $fail = true;
+    } elseif ($s['status'] !== 'covered' && !$inBacklog) {
+        echo "MISSING {$s['storyId']}: no #[Mitigation] for " . implode(', ', $s['missingCwes']) . "\n";
+        $fail = true;
+    } else {
+        printf("%-7s %s\n", $inBacklog ? 'backlog' : 'ok', $s['storyId']);
+    }
+}
+foreach ($backlog as $id) {
+    if (!in_array($id, array_column($report['storyCoverage'], 'storyId'), true)) {
+        echo "UNKNOWN {$id}: in backlog but not in the model\n";
+        $fail = true;
+    }
+}
+exit($fail ? 1 : 0);

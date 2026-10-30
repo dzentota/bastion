@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: sodium, pdo_sqlite, mbstring
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist
+      - name: Threat model gate (Hybridtm, ADR-0008)
+        run: bin/threat-gate
+      - name: Unit & integration tests
+        run: vendor/bin/phpunit --testsuite unit
+      - name: Attack tests (one per Abuser Story)
+        run: vendor/bin/phpunit --testsuite attack
+      - name: Static analysis (phpstan max, no new errors over baseline)
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+      - name: Dependency audit
+        run: composer audit

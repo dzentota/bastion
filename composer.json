@@ -1,0 +1,111 @@
+{
+    "name": "dzentota/bastion",
+    "description": "Bastion \u2014 security-first CMS. A practical proof of the AppSec Manifesto.",
+    "type": "project",
+    "license": "MIT",
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "require": {
+        "php": ">=8.3",
+        "ext-pdo": "*",
+        "ext-sodium": "*",
+        "ext-mbstring": "*",
+        "dzentota/router": "dev-master",
+        "dzentota/session": "dev-main",
+        "dzentota/identity": "dev-main",
+        "dzentota/secure-db": "dev-main",
+        "dzentota/config-loader": "dev-main",
+        "dzentota/typedvalue": "dev-master",
+        "dzentota/respected-typedvalue": "dev-master",
+        "dzentota/domain-primitives": "dev-main",
+        "dzentota/template-engine": "dev-main",
+        "dzentota/template-variable": "dev-main",
+        "nyholm/psr7": "^1.8",
+        "nyholm/psr7-server": "^1.1",
+        "php-di/php-di": "^7.0",
+        "paragonie/halite": "^5.1",
+        "paragonie/csp-builder": "^3.0",
+        "spomky-labs/otphp": "^11.3",
+        "lbuchs/webauthn": "^2.2",
+        "bjeavons/zxcvbn-php": "^1.4"
+    },
+    "require-dev": {
+        "hybridtm/hybridtm": "dev-main",
+        "phpunit/phpunit": "^11.5",
+        "phpstan/phpstan": "^2.1",
+        "infection/infection": "^0.29"
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/dzentota/router",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/dzentota/session",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/dzentota/identity",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/dzentota/secure-db",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/dzentota/ConfigLoader",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/dzentota/typedvalue",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/dzentota/respected-typedvalue",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/dzentota/DomainPrimitives",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/dzentota/template-engine",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/dzentota/template-variable",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/dzentota/hybridtm",
+            "no-api": true
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Bastion\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Bastion\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "infection/extension-installer": true
+        }
+    }
+}

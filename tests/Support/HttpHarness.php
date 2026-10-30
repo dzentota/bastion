@@ -1,0 +1,95 @@
+<?php
+declare(strict_types=1);
+
+namespace Bastion\Tests\Support;
+
+use Bastion\Http\Kernel;
+use Bastion\Installation\Paths;
+use Nyholm\Psr7\ServerRequest;
+use Psr\Http\Message\ResponseInterface;
+
+/** Прогоняет запросы через настоящий Kernel во временном корне, с cookie jar. */
+final class HttpHarness
+{
+    public readonly Paths $paths;
+    /** @var array<string, string> */
+    private array $cookies = [];
+    public ?ResponseInterface $last = null;
+
+    public function __construct()
+    {
+        $root = sys_get_temp_dir() . '/bastion-http-' . bin2hex(random_bytes(4));
+        mkdir($root);
+        $repo = dirname(__DIR__, 2);
+        symlink($repo . '/templates', $root . '/templates');
+        symlink($repo . '/themes', $root . '/themes');
+        $this->paths = new Paths($root);
+    }
+
+    public function fresh(): self
+    {
+        $h = clone $this;
+        $h->cookies = [];
+        return $h;
+    }
+
+    public function get(string $path): ResponseInterface
+    {
+        return $this->send('GET', $path, []);
+    }
+
+    /** @param array<string, mixed> $form */
+    public function post(string $path, array $form, bool $withToken = true): ResponseInterface
+    {
+        if ($withToken) {
+            $form['_token'] = $this->token();
+        }
+        return $this->send('POST', $path, $form);
+    }
+
+    public function token(): string
+    {
+        preg_match('/name="_token" value="([^"]+)"/', (string) $this->last?->getBody(), $m);
+        return $m[1] ?? '';
+    }
+
+    public function body(): string
+    {
+        return (string) $this->last?->getBody();
+    }
+
+    /** @param array<string, mixed> $form */
+    private function send(string $method, string $path, array $form): ResponseInterface
+    {
+        // Kernel создаётся на каждый запрос, как в настоящем PHP-FPM.
+        $kernel = new Kernel($this->paths, false, true);
+        $req = (new ServerRequest($method, 'http://localhost' . $path, [], null, '1.1', ['REMOTE_ADDR' => '198.51.100.10']))
+            ->withCookieParams($this->cookies)
+            ->withParsedBody($method === 'POST' ? $form : null);
+        $res = $kernel->handle($req);
+        foreach ($res->getHeader('Set-Cookie') as $c) {
+            [$pair] = explode(';', $c, 2);
+            [$k, $v] = explode('=', $pair, 2);
+            $this->cookies[$k] = urldecode($v);
+        }
+        if ($res->getHeaderLine('Content-Type') !== '' && str_contains($res->getHeaderLine('Content-Type'), 'html')) {
+            $this->last = $res;
+        }
+        return $res;
+    }
+
+    /** Полная установка + вход админа с подключением TOTP. Возвращает секрет TOTP. */
+    public function installAndLogin(string $user = 'owner', string $pass = 'correct horse battery staple'): string
+    {
+        $this->get('/install');
+        $this->post('/install', ['install_token' => trim((string) file_get_contents($this->paths->installToken())),
+            'driver' => 'sqlite', 'username' => $user, 'password' => $pass]);
+        $this->get('/admin/login');
+        $this->post('/admin/login', ['username' => $user, 'password' => $pass]);
+        $this->get('/admin/2fa/setup');
+        preg_match('~<code>([A-Z2-7 ]+)</code>~', $this->body(), $m);
+        $secret = str_replace(' ', '', $m[1]);
+        $this->post('/admin/2fa/setup', ['code' => \OTPHP\TOTP::createFromSecret($secret)->now()]);
+        return $secret;
+    }
+}

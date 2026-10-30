@@ -1,0 +1,50 @@
+#!/usr/bin/env php
+<?php
+// Bastion CLI. Emergency Access (ADR-0010): доступен только тому, у кого есть shell/SSH на сервере.
+declare(strict_types=1);
+
+use Bastion\Infrastructure\Database\Connection;
+use Bastion\Installation\Paths;
+use Bastion\SecurityMonitoring\Domain\ActorKey;
+use Bastion\SecurityMonitoring\Infrastructure\DbAppSensor;
+use Bastion\Shared\Infrastructure\{FileLogger, SystemClock};
+
+require dirname(__DIR__) . '/vendor/autoload.php';
+
+if (PHP_SAPI !== 'cli') {
+    exit(1);
+}
+$paths = new Paths(dirname(__DIR__));
+[$cmd, $arg] = [$argv[1] ?? '', $argv[2] ?? ''];
+
+if (!$paths->isInstalled()) {
+    fwrite(STDERR, "Bastion is not installed.\n");
+    exit(1);
+}
+$config = json_decode((string) file_get_contents($paths->config()), true, 8, JSON_THROW_ON_ERROR);
+$db = $config['db']['driver'] === 'mysql'
+    ? Connection::mysql($config['db']['host'], (int) $config['db']['port'], $config['db']['name'], $config['db']['user'], $config['db']['password'])
+    : Connection::sqlite($paths->sqlite());
+$sensor = new DbAppSensor($db, new SystemClock(), new FileLogger($paths->var('log/security.log')));
+
+switch ($cmd) {
+    case 'unlock-account':
+        $sensor->clear(ActorKey::account(mb_strtolower($arg)));
+        $id = $db->selectCell('SELECT id FROM ?_accounts WHERE username = ?', mb_strtolower($arg));
+        if (is_string($id)) {
+            $sensor->clear(ActorKey::account($id));
+        }
+        echo "Cleared AppSensor responses for account '{$arg}'.\n";
+        break;
+    case 'unlock-ip':
+        if (filter_var($arg, FILTER_VALIDATE_IP) === false) {
+            fwrite(STDERR, "Invalid IP.\n");
+            exit(1);
+        }
+        $sensor->clear(ActorKey::ip($arg));
+        echo "Cleared AppSensor responses for IP {$arg}.\n";
+        break;
+    default:
+        echo "Usage:\n  bin/bastion unlock-account <username>\n  bin/bastion unlock-ip <ip>\n";
+        exit($cmd === '' ? 0 : 1);
+}
