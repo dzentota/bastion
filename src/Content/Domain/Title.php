@@ -8,8 +8,10 @@ use dzentota\TypedValue\Typed;
 use dzentota\TypedValue\TypedValue;
 use dzentota\TypedValue\ValidationResult;
 
+/** @implements Typed<string> */
 final class Title implements Typed
 {
+    /** @use TypedValue<string> */
     use TypedValue;
 
     public static function validate($value): ValidationResult

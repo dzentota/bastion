@@ -10,10 +10,7 @@ use Dzentota\Session\SessionManager;
 use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};
 use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
-/**
- * Защищает /admin/*: аутентификация через dzentota/identity (Authenticator, построенный
- * на сессии ЭТОГО запроса — см. TODO(identity) про отдельный SessionManager).
- */
+/** Защищает /admin/*: аутентификация через dzentota/identity (сессия берётся из запроса). */
 final class RequireStaff implements MiddlewareInterface
 {
     public const ACCOUNT = 'account';
@@ -24,9 +21,8 @@ final class RequireStaff implements MiddlewareInterface
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $session = $request->getAttribute(SessionMiddleware::SESSION_ATTRIBUTE);
-        $account = $session instanceof SessionManager
-            ? (new Authenticator($this->accounts, $session, AccountRepository::ARGON))->getCurrentIdentity($request)
+        $account = $request->getAttribute(SessionMiddleware::SESSION_ATTRIBUTE) instanceof SessionManager
+            ? (new Authenticator($this->accounts, null, AccountRepository::ARGON))->getCurrentIdentity($request)
             : null;
         if ($account === null) {
             return $this->responses->createResponse(302)->withHeader('Location', '/admin/login');

@@ -4,7 +4,7 @@
 declare(strict_types=1);
 
 $root = dirname(__DIR__);
-$cmd = sprintf('php %s/bin/hybridtm analyze --infra=%s/threat-model.php --source=%s/src --kb=%s/vendor/hybridtm/hybridtm/apps/api/kb --check-stories --format=json',
+$cmd = sprintf('php %s/vendor/bin/hybridtm analyze --infra=%s/threat-model.php --source=%s/src --kb=%s/vendor/hybridtm/hybridtm/apps/api/kb --check-stories --format=json',
     $root, $root, $root, $root);
 exec($cmd . ' 2>/dev/null', $out, $code);
 $report = json_decode(implode("\n", $out), true);

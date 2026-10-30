@@ -7,9 +7,12 @@ use dzentota\TypedValue\Typed;
 use dzentota\TypedValue\TypedValue;
 use dzentota\TypedValue\ValidationResult;
 
-/** UUIDv4, генерируется системой (правило 0: системные идентификаторы). */
+/** UUIDv4, генерируется системой (правило 0: системные идентификаторы). *
+ * @implements Typed<string>
+ */
 final class EntryId implements Typed
 {
+    /** @use TypedValue<string> */
     use TypedValue;
 
     public static function validate($value): ValidationResult

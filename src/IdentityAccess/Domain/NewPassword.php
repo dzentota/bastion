@@ -13,9 +13,12 @@ use ZxcvbnPhp\Zxcvbn;
 /**
  * Новый пароль, прошедший политику: ≥12 символов, ≤1024 байт, zxcvbn ≥ 3,
  * не содержит имени пользователя.
+ *
+ * @implements Typed<string>
  */
 final class NewPassword implements Typed, ProhibitedFromLogs
 {
+    /** @use TypedValue<string> */
     use TypedValue;
 
     public static function validate($value): ValidationResult

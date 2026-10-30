@@ -7,9 +7,12 @@ use dzentota\TypedValue\Typed;
 use dzentota\TypedValue\TypedValue;
 use dzentota\TypedValue\ValidationResult;
 
-/** Имя БД или пользователя MySQL. */
+/** Имя БД или пользователя MySQL. *
+ * @implements Typed<string>
+ */
 final class DbName implements Typed
 {
+    /** @use TypedValue<string> */
     use TypedValue;
 
     public static function validate($value): ValidationResult

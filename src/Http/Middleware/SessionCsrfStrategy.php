@@ -4,32 +4,38 @@ declare(strict_types=1);
 namespace Bastion\Http\Middleware;
 
 use Bastion\SecurityMonitoring\Domain\{ActorKey, AppSensor, DetectionPoint};
-use dzentota\Router\Middleware\Contract\CsrfProtectionStrategyInterface;
+use dzentota\Router\Middleware\Contract\{CsrfProtectionStrategyInterface, CsrfTokenProviderInterface};
 use dzentota\Router\Middleware\Exception\CsrfException;
 use Dzentota\Session\Middleware\SessionMiddleware;
 use Dzentota\Session\SessionManager;
-use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
 use HybridTM\Attributes\{AbuserStory, AssetId, Mitigation};
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
 
 /**
- * CSRF-стратегия для router/CsrfMiddleware поверх токена из dzentota/session.
- *
- * Почему не встроенные стратегии router: SynchronizerTokenStrategy требует атрибут session_id
- * и отдаёт токен только в заголовке ответа (неудобно для SSR-форм), а double-submit не даёт
- * токен на первом GET. TODO(router): добавить стратегию на основе SessionManager.
+ * CSRF-стратегия для router/CsrfMiddleware поверх пула токенов dzentota/session.
+ * Токены живут в зашифрованной сессии в БД — отдельный PSR-16 кэш (как для
+ * SynchronizerTokenStrategy) на shared-хостинге не нужен.
  */
-#[AbuserStory('csrf-publish')]
-#[Mitigation(cwe: 'CWE-352', description: 'dzentota/router CsrfMiddleware with session-bound synchronizer token on every state-changing request')]
 #[AssetId('bastion-app')]
-final class SessionCsrfStrategy implements CsrfProtectionStrategyInterface
+#[AbuserStory('csrf-publish')]
+#[Mitigation(cwe: 'CWE-352', description: 'dzentota/router CsrfMiddleware with session-bound synchronizer token pool on every state-changing request')]
+final class SessionCsrfStrategy implements CsrfProtectionStrategyInterface, CsrfTokenProviderInterface
 {
     public function __construct(private readonly AppSensor $sensor)
     {
     }
 
+    public function prepareRequest(ServerRequestInterface $request, string $tokenAttribute): ServerRequestInterface
+    {
+        $session = $request->getAttribute(SessionMiddleware::SESSION_ATTRIBUTE);
+        return $session instanceof SessionManager
+            ? $request->withAttribute($tokenAttribute, $session->generateCsrfToken()->toNative())
+            : $request;
+    }
+
     public function attachToken(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        return $response; // токен встраивается в формы через View
+        return $response; // токен встраивается в формы через View (атрибут csrf_token)
     }
 
     public function validateRequest(ServerRequestInterface $request): void

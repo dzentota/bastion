@@ -120,6 +120,7 @@ final class Kernel
     {
         $responses = $c->get(ResponseFactoryInterface::class);
         $router = new Router($c, $c->get(LoggerInterface::class));
+        $router->setPropagateExceptions(true); // ошибки обработчиков видит наш ErrorHandler
         $router->middleware(
             new ErrorHandler($responses, $c->get(LoggerInterface::class)),
             new SecurityHeaders($https),
@@ -172,7 +173,14 @@ final class Kernel
         $cookie = $devCookies ? new CookieManager('bastion_sid', false, true, 'Strict') : new CookieManager('__Host-bastion', true, true, 'Strict');
         return [
             new SessionMiddleware($storage, $cookie, 1800, 14400, false, true, false),
-            new CsrfMiddleware(new SessionCsrfStrategy($sensor), $c->get(LoggerInterface::class), [], null),
+            new CsrfMiddleware(
+                new SessionCsrfStrategy($sensor), $c->get(LoggerInterface::class), [], null,
+                failureResponseFactory: static function () use ($c): \Psr\Http\Message\ResponseInterface {
+                    $r = $c->get(ResponseFactoryInterface::class)->createResponse(403)->withHeader('Content-Type', 'text/plain; charset=utf-8');
+                    $r->getBody()->write("The form has expired. Go back, reload the page and try again.\n");
+                    return $r;
+                },
+            ),
         ];
     }
 

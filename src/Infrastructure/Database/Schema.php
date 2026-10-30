@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\Infrastructure\Database;
 
+use Dzentota\Session\Storage\DatabaseStorage;
 use SecureDb\Db;
 
 /** Схема БД. DDL совместим с SQLite и MySQL (только переносимые типы). */
@@ -47,14 +48,6 @@ final class Schema
                 until_ts INTEGER NOT NULL,
                 PRIMARY KEY (actor_key, response)
             ){$suffix}",
-            // dzentota/session DatabaseStorage::createTable() использует MySQL-only синтаксис — создаём сами.
-            "CREATE TABLE IF NOT EXISTS ?_sessions (
-                session_id VARCHAR(128) PRIMARY KEY,
-                session_data " . ($driver === 'mysql' ? 'LONGBLOB' : 'BLOB') . " NOT NULL,
-                expires_at INTEGER NOT NULL,
-                created_at INTEGER NOT NULL,
-                user_id VARCHAR(255) NULL
-            ){$suffix}",
             "CREATE TABLE IF NOT EXISTS ?_audit (
                 id INTEGER PRIMARY KEY " . ($driver === 'mysql' ? 'AUTO_INCREMENT' : 'AUTOINCREMENT') . ",
                 actor_id {$key} NULL,
@@ -72,6 +65,10 @@ final class Schema
     {
         foreach (self::statements($driver) as $sql) {
             $db->query($sql);
+        }
+        $sessions = new DatabaseStorage($db->getPdo(), Tables::SESSIONS);
+        if (!$sessions->createTable()) {
+            throw new \RuntimeException('Cannot create sessions table', 0, $sessions->getLastError());
         }
     }
 }

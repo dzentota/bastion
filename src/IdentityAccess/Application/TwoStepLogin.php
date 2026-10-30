@@ -7,6 +7,7 @@ use Bastion\IdentityAccess\Domain\{Account, AccountId};
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
 use Bastion\SecurityMonitoring\Domain\{ActorKey, AppSensor, DetectionPoint, ResponseAction};
 use Dzentota\Identity\Authenticator;
+use Dzentota\Session\Middleware\SessionMiddleware;
 use Dzentota\Session\SessionManager;
 use OTPHP\TOTP;
 use ParagonIE\HiddenString\HiddenString;
@@ -49,7 +50,7 @@ final class TwoStepLogin
             return LoginOutcome::Rejected;
         }
 
-        $account = $this->passwords->verify($request, $username, $password);
+        $account = $this->passwords->verify($username, $password);
         if ($account === null) {
             $this->sensor->event(DetectionPoint::AE2, $acct);
             return LoginOutcome::Rejected;
@@ -66,7 +67,7 @@ final class TwoStepLogin
         if ($account->role->requiresSecondFactor()) {
             return LoginOutcome::SecondFactorEnrollmentRequired;
         }
-        $this->complete($session, $account);
+        $this->complete($request, $session, $account);
         return LoginOutcome::Authenticated;
     }
 
@@ -92,7 +93,7 @@ final class TwoStepLogin
             $this->sensor->event(DetectionPoint::AE12, ActorKey::account($account->username->toNative()), ActorKey::ip($this->ip($request)));
             return false;
         }
-        $this->complete($session, $account);
+        $this->complete($request, $session, $account);
         return true;
     }
 
@@ -126,7 +127,7 @@ final class TwoStepLogin
         $this->accounts->saveTotpSecret($account->id, new HiddenString($secret));
         $this->accounts->consumeTotpStep($account->id, $step);
         $session->remove(self::ENROLL_SECRET);
-        $this->complete($session, $this->accounts->find($account->getId()) ?? $account);
+        $this->complete($request, $session, $this->accounts->find($account->getId()) ?? $account);
         return true;
     }
 
@@ -137,14 +138,13 @@ final class TwoStepLogin
 
     #[AbuserStory('session-hijack')]
     #[Mitigation(cwe: 'CWE-384', description: 'Session id regenerated after password and again after the second factor')]
-    private function complete(SessionManager $session, Account $account): void
+    private function complete(ServerRequestInterface $request, SessionManager $session, Account $account): void
     {
         $session->remove(self::PENDING);
         $session->remove(self::PENDING_AT);
-        $session->regenerateId();
-        // Ключи Authenticator — чтобы getCurrentIdentity()/InjectIdentity из dzentota/identity работали как есть.
-        $session->set(Authenticator::AUTH_USER_ID, $account->getId());
-        $session->set(Authenticator::AUTH_TIME, $this->now());
+        // dzentota/identity: регенерирует id сессии и помечает её аутентифицированной.
+        (new Authenticator($this->accounts, $session, AccountRepository::ARGON))
+            ->completeLogin($request->withAttribute(SessionMiddleware::SESSION_ATTRIBUTE, $session), $account);
     }
 
     /** @return int|null номер шага TOTP, которому соответствует код (окно ±1 шаг) */

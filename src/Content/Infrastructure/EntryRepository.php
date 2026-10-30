@@ -5,7 +5,6 @@ namespace Bastion\Content\Infrastructure;
 
 use Bastion\Content\Domain\{Entry, EntryId, EntryStatus, EntryType, Slug, Title};
 use Bastion\Content\Domain\Block\BlockList;
-use Bastion\Infrastructure\Database\Tables;
 use SecureDb\Db;
 use HybridTM\Attributes\{AbuserStory, AssetId, Mitigation};
 
@@ -30,13 +29,11 @@ final class EntryRepository
             'published_at' => $e->publishedAt()?->format(DATE_ATOM),
             'updated_at' => gmdate(DATE_ATOM),
         ];
-        // TODO(secure-db): PlaceholderProcessor отвергает NULL-параметры (isset). Колонки nullable — пропускаем.
-        $row = array_filter($row, static fn ($v) => $v !== null);
         $this->db->tryFlatTransaction(function (Db $db) use ($e, $row): void {
             $exists = $db->selectCell('SELECT 1 FROM ?_entries WHERE id = ?', $e->id->toNative());
             $exists
-                ? $db->update(Tables::ENTRIES, $row, ['id' => $e->id->toNative()])
-                : $db->insert(Tables::ENTRIES, ['id' => $e->id->toNative()] + $row);
+                ? $db->update('?_entries', $row, ['id' => $e->id->toNative()])
+                : $db->insert('?_entries', ['id' => $e->id->toNative()] + $row);
         });
     }
 

@@ -4,8 +4,7 @@ declare(strict_types=1);
 namespace Bastion\Http;
 
 use Bastion\Theming\Dsl\{Renderer, TemplateName};
-use Dzentota\Session\Middleware\SessionMiddleware;
-use Dzentota\Session\SessionManager;
+use dzentota\Router\Middleware\CsrfMiddleware;
 use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};
 
 /** Рендер HTML-страниц через Template DSL + CSRF-токен для форм. */
@@ -21,9 +20,9 @@ final class View
     /** @param array<string, mixed> $ctx */
     public function admin(ServerRequestInterface $request, string $template, array $ctx = [], int $status = 200): ResponseInterface
     {
-        $session = $request->getAttribute(SessionMiddleware::SESSION_ATTRIBUTE);
-        if ($session instanceof SessionManager) {
-            $ctx['csrf'] = $session->generateCsrfToken()->toNative();
+        $token = $request->getAttribute(CsrfMiddleware::TOKEN_ATTRIBUTE);
+        if (is_string($token)) {
+            $ctx['csrf'] = $token;
         }
         return $this->html($this->admin->render(TemplateName::fromNative($template), $ctx), $status);
     }

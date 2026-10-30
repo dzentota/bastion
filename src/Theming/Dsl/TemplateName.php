@@ -10,9 +10,12 @@ use dzentota\TypedValue\ValidationResult;
 /**
  * Имя шаблона темы: только [a-z0-9_-] сегменты через "/", без "..", без расширения.
  * Исключает path traversal при include (ADR-0013, abuser story template-code-exec).
+ *
+ * @implements Typed<string>
  */
 final class TemplateName implements Typed
 {
+    /** @use TypedValue<string> */
     use TypedValue;
 
     public static function validate($value): ValidationResult

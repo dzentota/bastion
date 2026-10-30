@@ -18,7 +18,6 @@ use HybridTM\Attributes\{AbuserStory, AssetId, Mitigation};
 final class Renderer
 {
     private const MAX_INCLUDE_DEPTH = 8;
-    private const SAFE_URL = '~^(https?://[^\s]+|mailto:[^\s]+|/(?!/)[^\s]*|#[^\s]*)$~i';
 
     /** @var array<string, \Closure(string): string> */
     private array $helpers;
@@ -136,7 +135,8 @@ final class Renderer
         return match ($filter) {
             '' => $this->escape($string, 'html'),
             'attr' => $this->escape($string, 'attr'),
-            'url' => $this->escape(preg_match(self::SAFE_URL, $string) ? $string : '#', 'attr'),
+            // dzentota/template-variable: allowlist схем (http/https/mailto/относительные), иначе "#"
+            'url' => $this->escape($string, 'url_attr'),
             default => $this->escape(($this->helpers[$filter])($string), 'html'),
         };
     }

@@ -1,24 +1,28 @@
 # Дефекты библиотек, найденные при dogfooding (ADR-0004)
 
-Каждый пункт — задача в соответствующем репозитории. Обходной путь в Bastion помечен `TODO(<lib>)`.
+Исправления — в ветках `fix/bastion-dogfooding` соответствующих репозиториев (пока не опубликованы).
+Обходы в Bastion убраны в ветке `chore/library-fixes`.
 
-| # | Библиотека | Проблема | Влияние | Обход в Bastion |
-|---|---|---|---|---|
-| 1 | identity | `Authenticator::login()` сразу аутентифицирует сессию; нет шага второго фактора / публичного `verify()` | MFA невозможен без обхода | `PasswordVerifier` использует одноразовую in-memory сессию |
-| 2 | identity | `Authenticator` получает свой `SessionManager` в конструкторе, а `SessionMiddleware` создаёт новый на каждый запрос — запись идёт не в ту сессию | Вход «не сохраняется» | `Authenticator` строится на сессии запроса (`RequireStaff`) |
-| 3 | identity | Заявлен PHP `^7.4`, код требует 8.x; README использует несуществующий `$router->group()` | Сломанная установка/документация | — |
-| 4 | session | После `regenerateId()` старый ID 10 с остаётся валидным **с данными** | Окно для session fixation | Двойная регенерация (после пароля и после 2FA) |
-| 5 | session | `DatabaseStorage::createTable()` — MySQL-only синтаксис (`INDEX` внутри `CREATE`), ошибка проглатывается | Не работает на SQLite | Таблица создаётся в `Schema` |
-| 6 | session | Один CSRF-токен на сессию; каждый `generateCsrfToken()` перезаписывает предыдущий | Две вкладки ломают формы | Принято для среза |
-| 7 | session | README: неверный порядок аргументов `CookieManager` | — | — |
-| 8 | router | `SynchronizerTokenStrategy` требует атрибут `session_id`, который никто не ставит; токен только в заголовке ответа | Неприменимо к SSR-формам | `SessionCsrfStrategy` поверх `SessionManager` |
-| 9 | router | `CsrfMiddleware` лимитирует по `REMOTE_ADDR`; ответ 403 всегда JSON | За прокси — общий лимит | — |
-| 10 | router | Исключения в обработчике проглатываются `RouteDispatchMiddleware` (500 JSON) — внешний error handler их не видит | Разный формат ошибок | Логируются через переданный logger |
-| 11 | secure-db | `PlaceholderProcessor` отвергает `NULL`-параметры (`isset`) | Нельзя записать NULL | Колонки с NULL пропускаются при записи |
-| 12 | secure-db | `setIdentifierPrefix()` применяется к `?_name` только в сырых запросах, не в `insert/update/delete` | Несогласованный API | `Tables::*` с полными именами |
-| 13 | template-variable | URL-контекст = `rawurlencode()` всей строки | Нельзя вывести href | Фильтр `url` в DSL |
-| 14 | template-engine | Шаблоны — полный PHP, нет ограниченного режима; `if ($flag)` по обёрнутому значению всегда true | Не подходит для тем (ADR-0013) | Собственный DSL |
-| 15 | typedvalue | `toNative()`/`validate($value)` без типов и generics | ~105 из 170 ошибок phpstan max (baseline) | Baseline |
-| 16 | hybridtm | `bin/hybridtm` ищет autoload только как корневой проект | Не запускается из vendor | `bin/hybridtm` обёртка |
-| 17 | hybridtm | `#[Mitigation]` без `#[AssetId]` на классе молча игнорируется | Ложное «uncovered» без объяснения | `#[AssetId]` на всех классах с mitigation |
-| 18 | все | Нет тегированных релизов, зависимости `dev-master`/`dev-main` | Невоспроизводимые сборки | `composer.lock` в репозитории |
+| # | Библиотека | Проблема | Статус |
+|---|---|---|---|
+| 1 | identity | Нет шага второго фактора | ✅ `verifyCredentials()` + `completeLogin()` |
+| 2 | identity | `Authenticator` писал в чужой `SessionManager` | ✅ сессия берётся из атрибута запроса |
+| 3 | identity | PHP `^7.4`, README с несуществующим `$router->group()` | ✅ PHP ≥8.3, README исправлен |
+| 4 | session | Старый ID 10 с валиден с данными после `regenerateId()` | ✅ tombstone без данных |
+| 5 | session | `createTable()` только для MySQL, ошибка проглатывалась | ✅ mysql/sqlite/pgsql, `getLastError()` |
+| 6 | session | Один CSRF-токен на сессию | ✅ пул из 10 токенов с TTL, `consumeCsrfToken()` |
+| 7 | session | README: порядок аргументов `CookieManager` | ✅ |
+| 8 | router | CSRF-стратегии непригодны для SSR-форм | ✅ `CsrfTokenProviderInterface`, атрибут `csrf_token`, резолвер session id |
+| 9 | router | Лимит CSRF по `REMOTE_ADDR`, ответ только JSON | ✅ `clientIpResolver`, `failureResponseFactory` |
+| 10 | router | Исключения обработчиков проглатывались | ✅ `Router::setPropagateExceptions()` |
+| 11 | secure-db | `NULL`-параметры отвергались | ✅ |
+| 12 | secure-db | Префикс не применялся в `insert/update/delete` | ✅ `?_name` в хелперах |
+| 13 | template-variable | URL-контекст непригоден для href | ✅ `EscapeContext::URL_ATTR` (allowlist схем) |
+| 14 | template-engine | `if ($flag)` всегда true | ✅ bool/null не оборачиваются, `isTruthy()`. Ограниченного режима нет — Bastion использует свой DSL (ADR-0013) |
+| 15 | typedvalue | Нет generics | ✅ `@template`; baseline phpstan Bastion 170 → 123 |
+| 16 | hybridtm | `bin/hybridtm` не работал из vendor | ✅ |
+| 17 | hybridtm | `#[Mitigation]` без `#[AssetId]` молча игнорировался | ✅ учитывается через `#[AbuserStory]`, иначе предупреждение |
+| 18 | все | Нет тегированных релизов | ⏳ после публикации веток |
+
+Попутно: обновлены lock-файлы identity, session, secure-db — залоченные версии
+sodium_compat, phpunit, php_codesniffer были под security advisories.

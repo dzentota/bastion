@@ -8,7 +8,6 @@ use Dzentota\Identity\CredentialStore;
 use Dzentota\Identity\Identity;
 use ParagonIE\Halite\Symmetric\{Crypto, EncryptionKey};
 use ParagonIE\HiddenString\HiddenString;
-use Bastion\Infrastructure\Database\Tables;
 use SecureDb\Db;
 
 /**
@@ -26,7 +25,7 @@ final class AccountRepository implements CredentialStore
     public function create(Username $username, NewPassword $password, Role $role): Account
     {
         $id = AccountId::generate();
-        $this->db->insert(Tables::ACCOUNTS, [
+        $this->db->insert('?_accounts', [
             'id' => $id,
             'username' => $username,
             'password_hash' => password_hash($password->toNative(), PASSWORD_ARGON2ID, self::ARGON),
@@ -52,7 +51,7 @@ final class AccountRepository implements CredentialStore
 
     public function updateCredentials(string $userId, string $newHash): void
     {
-        $this->db->update(Tables::ACCOUNTS, ['password_hash' => $newHash], ['id' => $userId]);
+        $this->db->update('?_accounts', ['password_hash' => $newHash], ['id' => $userId]);
     }
 
     public function fetchIdentity(string $userId): ?Identity
@@ -74,7 +73,7 @@ final class AccountRepository implements CredentialStore
 
     public function saveTotpSecret(AccountId $id, HiddenString $secret): void
     {
-        $this->db->update(Tables::ACCOUNTS, ['totp_secret' => Crypto::encrypt($secret, $this->key)], ['id' => $id]);
+        $this->db->update('?_accounts', ['totp_secret' => Crypto::encrypt($secret, $this->key)], ['id' => $id]);
     }
 
     /**

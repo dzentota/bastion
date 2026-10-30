@@ -13,54 +13,6 @@ parameters:
 			path: src/Content/Domain/Block/BlockList.php
 
 		-
-			message: '#^Method Bastion\\Content\\Domain\\Block\\BlockText\:\:validate\(\) has parameter \$value with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/Content/Domain/Block/BlockText.php
-
-		-
-			message: '#^Parameter \#2 \$text of class Bastion\\Content\\Domain\\Block\\Heading constructor expects Bastion\\Content\\Domain\\Title, dzentota\\TypedValue\\Typed\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Content/Domain/Block/Heading.php
-
-		-
-			message: '#^Parameter \#1 \$text of class Bastion\\Content\\Domain\\Block\\Paragraph constructor expects Bastion\\Content\\Domain\\Block\\BlockText, dzentota\\TypedValue\\Typed\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Content/Domain/Block/Paragraph.php
-
-		-
-			message: '#^Parameter \#1 \$text of class Bastion\\Content\\Domain\\Block\\Quote constructor expects Bastion\\Content\\Domain\\Block\\BlockText, dzentota\\TypedValue\\Typed\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Content/Domain/Block/Quote.php
-
-		-
-			message: '#^Method Bastion\\Content\\Domain\\EntryId\:\:generate\(\) should return Bastion\\Content\\Domain\\EntryId but returns dzentota\\TypedValue\\Typed\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Content/Domain/EntryId.php
-
-		-
-			message: '#^Method Bastion\\Content\\Domain\\EntryId\:\:validate\(\) has parameter \$value with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/Content/Domain/EntryId.php
-
-		-
-			message: '#^Method Bastion\\Content\\Domain\\Slug\:\:validate\(\) has parameter \$value with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/Content/Domain/Slug.php
-
-		-
-			message: '#^Method Bastion\\Content\\Domain\\Title\:\:validate\(\) has parameter \$value with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/Content/Domain/Title.php
-
-		-
 			message: '#^Method Bastion\\Content\\Infrastructure\\EntryRepository\:\:hydrate\(\) has parameter \$r with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -85,12 +37,6 @@ parameters:
 			path: src/Content/Infrastructure/EntryRepository.php
 
 		-
-			message: '#^Parameter \#1 \$id of static method Bastion\\Content\\Domain\\Entry\:\:restore\(\) expects Bastion\\Content\\Domain\\EntryId, dzentota\\TypedValue\\Typed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Content/Infrastructure/EntryRepository.php
-
-		-
 			message: '#^Parameter \#1 \$json of static method Bastion\\Content\\Domain\\Block\\BlockList\:\:fromJson\(\) expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 1
@@ -109,18 +55,6 @@ parameters:
 			path: src/Content/Infrastructure/EntryRepository.php
 
 		-
-			message: '#^Parameter \#3 \$title of static method Bastion\\Content\\Domain\\Entry\:\:restore\(\) expects Bastion\\Content\\Domain\\Title, dzentota\\TypedValue\\Typed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Content/Infrastructure/EntryRepository.php
-
-		-
-			message: '#^Parameter \#4 \$slug of static method Bastion\\Content\\Domain\\Entry\:\:restore\(\) expects Bastion\\Content\\Domain\\Slug, dzentota\\TypedValue\\Typed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Content/Infrastructure/EntryRepository.php
-
-		-
 			message: '#^Parameter \#7 \$authorId of static method Bastion\\Content\\Domain\\Entry\:\:restore\(\) expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 1
@@ -131,30 +65,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: src/Content/Rendering/BlockHtmlRenderer.php
-
-		-
-			message: '#^Parameter \#1 \$s of method Bastion\\Content\\Rendering\\BlockHtmlRenderer\:\:esc\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Content/Rendering/BlockHtmlRenderer.php
-
-		-
-			message: '#^Parameter \#1 \$s of method Bastion\\Content\\Rendering\\BlockHtmlRenderer\:\:text\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/Content/Rendering/BlockHtmlRenderer.php
-
-		-
-			message: '#^Binary operation "\." between ''/'' and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: src/Http/Controller/EntryController.php
-
-		-
-			message: '#^Binary operation "\." between ''/admin/entries/'' and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 2
-			path: src/Http/Controller/EntryController.php
 
 		-
 			message: '#^Cannot call method toArray\(\) on mixed\.$#'
@@ -181,13 +91,7 @@ parameters:
 			path: src/Http/Controller/EntryController.php
 
 		-
-			message: '#^Parameter \#1 \$slug of method Bastion\\Content\\Infrastructure\\EntryRepository\:\:slugTaken\(\) expects Bastion\\Content\\Domain\\Slug, dzentota\\TypedValue\\Typed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Http/Controller/EntryController.php
-
-		-
-			message: '#^Parameter \#1 \$title of method Bastion\\Content\\Domain\\Entry\:\:revise\(\) expects Bastion\\Content\\Domain\\Title, dzentota\\TypedValue\\Typed\|null given\.$#'
+			message: '#^Parameter \#1 \$title of method Bastion\\Content\\Domain\\Entry\:\:revise\(\) expects Bastion\\Content\\Domain\\Title, Bastion\\Content\\Domain\\Title\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: src/Http/Controller/EntryController.php
@@ -199,13 +103,13 @@ parameters:
 			path: src/Http/Controller/EntryController.php
 
 		-
-			message: '#^Parameter \#2 \$slug of method Bastion\\Content\\Domain\\Entry\:\:revise\(\) expects Bastion\\Content\\Domain\\Slug, dzentota\\TypedValue\\Typed\|null given\.$#'
+			message: '#^Parameter \#2 \$slug of method Bastion\\Content\\Domain\\Entry\:\:revise\(\) expects Bastion\\Content\\Domain\\Slug, Bastion\\Content\\Domain\\Slug\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: src/Http/Controller/EntryController.php
 
 		-
-			message: '#^Parameter \#2 \$title of static method Bastion\\Content\\Domain\\Entry\:\:draft\(\) expects Bastion\\Content\\Domain\\Title, dzentota\\TypedValue\\Typed\|null given\.$#'
+			message: '#^Parameter \#2 \$title of static method Bastion\\Content\\Domain\\Entry\:\:draft\(\) expects Bastion\\Content\\Domain\\Title, Bastion\\Content\\Domain\\Title\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: src/Http/Controller/EntryController.php
@@ -217,7 +121,7 @@ parameters:
 			path: src/Http/Controller/EntryController.php
 
 		-
-			message: '#^Parameter \#3 \$slug of static method Bastion\\Content\\Domain\\Entry\:\:draft\(\) expects Bastion\\Content\\Domain\\Slug, dzentota\\TypedValue\\Typed\|null given\.$#'
+			message: '#^Parameter \#3 \$slug of static method Bastion\\Content\\Domain\\Entry\:\:draft\(\) expects Bastion\\Content\\Domain\\Slug, Bastion\\Content\\Domain\\Slug\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: src/Http/Controller/EntryController.php
@@ -243,7 +147,7 @@ parameters:
 		-
 			message: '#^Cannot call method getFirstError\(\) on dzentota\\TypedValue\\ValidationResult\|null\.$#'
 			identifier: method.nonObject
-			count: 2
+			count: 1
 			path: src/Http/Controller/InstallController.php
 
 		-
@@ -253,34 +157,10 @@ parameters:
 			path: src/Http/Controller/InstallController.php
 
 		-
-			message: '#^Parameter \#1 \$db of method Bastion\\Installation\\Installer\:\:install\(\) expects array\{driver\: Bastion\\Installation\\DbDriver, host\?\: Bastion\\Installation\\DbHost, port\?\: int, name\?\: Bastion\\Installation\\DbName, user\?\: Bastion\\Installation\\DbName, password\?\: string\}, array\{driver\: dzentota\\TypedValue\\Typed\}\|array\{host\: dzentota\\TypedValue\\Typed\|null, port\: int\<1, 65535\>, name\: dzentota\\TypedValue\\Typed\|null, user\: dzentota\\TypedValue\\Typed\|null, password\: string, driver\: dzentota\\TypedValue\\Typed\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Http/Controller/InstallController.php
-
-		-
-			message: '#^Parameter \#2 \$admin of method Bastion\\Installation\\Installer\:\:install\(\) expects Bastion\\IdentityAccess\\Domain\\Username, dzentota\\TypedValue\\Typed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Http/Controller/InstallController.php
-
-		-
-			message: '#^Parameter \#2 \$username of static method Bastion\\IdentityAccess\\Domain\\NewPassword\:\:forUser\(\) expects Bastion\\IdentityAccess\\Domain\\Username, dzentota\\TypedValue\\Typed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Http/Controller/InstallController.php
-
-		-
 			message: '#^Parameter \#3 \$password of method Bastion\\Installation\\Installer\:\:install\(\) expects Bastion\\IdentityAccess\\Domain\\NewPassword, Bastion\\IdentityAccess\\Domain\\NewPassword\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: src/Http/Controller/InstallController.php
-
-		-
-			message: '#^Binary operation "\." between ''/'' and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: src/Http/Controller/PublicController.php
 
 		-
 			message: '#^Method Bastion\\Http\\InstallSessionCache\:\:setMultiple\(\) has parameter \$values with no value type specified in iterable type iterable\.$#'
@@ -295,7 +175,37 @@ parameters:
 			path: src/Http/InstallSessionCache.php
 
 		-
+			message: '#^Anonymous function should return Psr\\Http\\Message\\ResponseInterface but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Http/Kernel.php
+
+		-
+			message: '#^Cannot call method createResponse\(\) on mixed\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Http/Kernel.php
+
+		-
+			message: '#^Cannot call method getBody\(\) on mixed\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Http/Kernel.php
+
+		-
 			message: '#^Cannot call method getPdo\(\) on mixed\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Http/Kernel.php
+
+		-
+			message: '#^Cannot call method withHeader\(\) on mixed\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Http/Kernel.php
+
+		-
+			message: '#^Cannot call method write\(\) on mixed\.$#'
 			identifier: method.nonObject
 			count: 1
 			path: src/Http/Kernel.php
@@ -553,12 +463,6 @@ parameters:
 			path: src/Http/Middleware/SessionCsrfStrategy.php
 
 		-
-			message: '#^Parameter \#1 \$name of method Bastion\\Theming\\Dsl\\Renderer\:\:render\(\) expects Bastion\\Theming\\Dsl\\TemplateName, dzentota\\TypedValue\\Typed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/Http/View.php
-
-		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
 			count: 1
@@ -577,7 +481,7 @@ parameters:
 			path: src/IdentityAccess/Application/TwoStepLogin.php
 
 		-
-			message: '#^Parameter \#1 \$label of method OTPHP\\OTP\:\:setLabel\(\) expects non\-empty\-string, mixed given\.$#'
+			message: '#^Parameter \#1 \$label of method OTPHP\\OTP\:\:setLabel\(\) expects non\-empty\-string, string given\.$#'
 			identifier: argument.type
 			count: 1
 			path: src/IdentityAccess/Application/TwoStepLogin.php
@@ -589,58 +493,10 @@ parameters:
 			path: src/IdentityAccess/Application/TwoStepLogin.php
 
 		-
-			message: '#^Parameter \#1 \$usernameOrId of static method Bastion\\SecurityMonitoring\\Domain\\ActorKey\:\:account\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/IdentityAccess/Application/TwoStepLogin.php
-
-		-
-			message: '#^Method Bastion\\IdentityAccess\\Domain\\Account\:\:getId\(\) should return string but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: src/IdentityAccess/Domain/Account.php
-
-		-
-			message: '#^Method Bastion\\IdentityAccess\\Domain\\AccountId\:\:generate\(\) should return Bastion\\IdentityAccess\\Domain\\AccountId but returns dzentota\\TypedValue\\Typed\.$#'
-			identifier: return.type
-			count: 1
-			path: src/IdentityAccess/Domain/AccountId.php
-
-		-
-			message: '#^Method Bastion\\IdentityAccess\\Domain\\AccountId\:\:validate\(\) has parameter \$value with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/IdentityAccess/Domain/AccountId.php
-
-		-
 			message: '#^Method Bastion\\IdentityAccess\\Domain\\NewPassword\:\:forUser\(\) never assigns null to &\$result so it can be removed from the by\-ref type\.$#'
 			identifier: parameterByRef.unusedType
 			count: 1
 			path: src/IdentityAccess/Domain/NewPassword.php
-
-		-
-			message: '#^Method Bastion\\IdentityAccess\\Domain\\NewPassword\:\:forUser\(\) should return Bastion\\IdentityAccess\\Domain\\NewPassword\|null but returns dzentota\\TypedValue\\Typed\|null\.$#'
-			identifier: return.type
-			count: 1
-			path: src/IdentityAccess/Domain/NewPassword.php
-
-		-
-			message: '#^Method Bastion\\IdentityAccess\\Domain\\NewPassword\:\:validate\(\) has parameter \$value with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/IdentityAccess/Domain/NewPassword.php
-
-		-
-			message: '#^Parameter \#2 \$needle of function str_contains expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/IdentityAccess/Domain/NewPassword.php
-
-		-
-			message: '#^Method Bastion\\IdentityAccess\\Domain\\Username\:\:validate\(\) has parameter \$value with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/IdentityAccess/Domain/Username.php
 
 		-
 			message: '#^Cannot cast mixed to int\.$#'
@@ -655,46 +511,10 @@ parameters:
 			path: src/IdentityAccess/Infrastructure/AccountRepository.php
 
 		-
-			message: '#^Parameter \#1 \$id of class Bastion\\IdentityAccess\\Domain\\Account constructor expects Bastion\\IdentityAccess\\Domain\\AccountId, dzentota\\TypedValue\\Typed\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/IdentityAccess/Infrastructure/AccountRepository.php
-
-		-
-			message: '#^Parameter \#1 \$password of function password_hash expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/IdentityAccess/Infrastructure/AccountRepository.php
-
-		-
 			message: '#^Parameter \#1 \$value of static method Bastion\\IdentityAccess\\Domain\\Role\:\:from\(\) expects int\|string, mixed given\.$#'
 			identifier: argument.type
 			count: 1
 			path: src/IdentityAccess/Infrastructure/AccountRepository.php
-
-		-
-			message: '#^Parameter \#2 \$username of class Bastion\\IdentityAccess\\Domain\\Account constructor expects Bastion\\IdentityAccess\\Domain\\Username, dzentota\\TypedValue\\Typed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/IdentityAccess/Infrastructure/AccountRepository.php
-
-		-
-			message: '#^Method Bastion\\Installation\\DbDriver\:\:validate\(\) has parameter \$value with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/Installation/DbDriver.php
-
-		-
-			message: '#^Method Bastion\\Installation\\DbHost\:\:validate\(\) has parameter \$value with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/Installation/DbHost.php
-
-		-
-			message: '#^Method Bastion\\Installation\\DbName\:\:validate\(\) has parameter \$value with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/Installation/DbName.php
 
 		-
 			message: '#^Offset ''host'' might not exist on array\{driver\: Bastion\\Installation\\DbDriver, host\?\: Bastion\\Installation\\DbHost, port\?\: int, name\?\: Bastion\\Installation\\DbName, user\?\: Bastion\\Installation\\DbName, password\?\: string\}\.$#'
@@ -727,30 +547,6 @@ parameters:
 			path: src/Installation/Installer.php
 
 		-
-			message: '#^Parameter \#1 \$host of static method Bastion\\Infrastructure\\Database\\Connection\:\:mysql\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Installation/Installer.php
-
-		-
-			message: '#^Parameter \#2 \$driver of static method Bastion\\Infrastructure\\Database\\Schema\:\:migrate\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Installation/Installer.php
-
-		-
-			message: '#^Parameter \#3 \$database of static method Bastion\\Infrastructure\\Database\\Connection\:\:mysql\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Installation/Installer.php
-
-		-
-			message: '#^Parameter \#4 \$user of static method Bastion\\Infrastructure\\Database\\Connection\:\:mysql\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Installation/Installer.php
-
-		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
 			count: 2
@@ -761,18 +557,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/Shared/Infrastructure/FileLogger.php
-
-		-
-			message: '#^Binary operation "\." between non\-falsy\-string and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: src/Theming/Dsl/DirectoryTemplateSource.php
-
-		-
-			message: '#^Parameter \#1 \$message of class Bastion\\Theming\\Dsl\\TemplateNotFound constructor expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/Theming/Dsl/DirectoryTemplateSource.php
 
 		-
 			message: '#^Method Bastion\\Theming\\Dsl\\Parser\:\:parseNodes\(\) should return list\<array\<string, mixed\>\> but returns list\<array\>\.$#'
@@ -789,12 +573,6 @@ parameters:
 		-
 			message: '#^Method Bastion\\Theming\\Dsl\\Parser\:\:parseTag\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: src/Theming/Dsl/Parser.php
-
-		-
-			message: '#^Property Bastion\\Theming\\Dsl\\Parser\:\:\$name \(string\) does not accept mixed\.$#'
-			identifier: assign.propertyType
 			count: 1
 			path: src/Theming/Dsl/Parser.php
 
@@ -823,12 +601,6 @@ parameters:
 			path: src/Theming/Dsl/Renderer.php
 
 		-
-			message: '#^Parameter \#1 \$name of method Bastion\\Theming\\Dsl\\Renderer\:\:renderTemplate\(\) expects Bastion\\Theming\\Dsl\\TemplateName, dzentota\\TypedValue\\Typed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Theming/Dsl/Renderer.php
-
-		-
 			message: '#^Parameter \#1 \$nodes of method Bastion\\Theming\\Dsl\\Renderer\:\:renderNodes\(\) expects list\<array\<string, mixed\>\>, mixed given\.$#'
 			identifier: argument.type
 			count: 3
@@ -850,12 +622,6 @@ parameters:
 			message: '#^Parameter \#2 \$path of method Bastion\\Theming\\Dsl\\Renderer\:\:lookup\(\) expects list\<string\>, mixed given\.$#'
 			identifier: argument.type
 			count: 3
-			path: src/Theming/Dsl/Renderer.php
-
-		-
-			message: '#^Part \$name\-\>toNative\(\) \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
 			path: src/Theming/Dsl/Renderer.php
 
 		-
@@ -893,21 +659,3 @@ parameters:
 			identifier: return.type
 			count: 1
 			path: src/Theming/Dsl/SignedAstCache.php
-
-		-
-			message: '#^Parameter \#1 \$message of class Bastion\\Theming\\Dsl\\CacheTampered constructor expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Theming/Dsl/SignedAstCache.php
-
-		-
-			message: '#^Parameter \#2 \$data of function hash expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Theming/Dsl/SignedAstCache.php
-
-		-
-			message: '#^Method Bastion\\Theming\\Dsl\\TemplateName\:\:validate\(\) has parameter \$value with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/Theming/Dsl/TemplateName.php

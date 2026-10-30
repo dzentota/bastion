@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Bastion\SecurityMonitoring\Infrastructure;
 
-use Bastion\Infrastructure\Database\Tables;
 use Bastion\SecurityMonitoring\Domain\{ActorKey, AppSensor, DetectionPoint, ResponseAction};
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -29,7 +28,7 @@ final class DbAppSensor implements AppSensor
         $now = $this->clock->now()->getTimestamp();
         $policy = $point->policy();
         foreach ($actors as $actor) {
-            $this->db->insert(Tables::SECURITY_EVENTS, [
+            $this->db->insert('?_security_events', [
                 'detection_point' => $point->value, 'actor_key' => $actor->value, 'created_at' => $now,
             ]);
             $count = (int) $this->db->selectCell(
@@ -54,16 +53,16 @@ final class DbAppSensor implements AppSensor
 
     public function clear(ActorKey $actor): void
     {
-        $this->db->delete(Tables::SECURITY_RESPONSES, ['actor_key' => $actor->value]);
-        $this->db->delete(Tables::SECURITY_EVENTS, ['actor_key' => $actor->value]);
+        $this->db->delete('?_security_responses', ['actor_key' => $actor->value]);
+        $this->db->delete('?_security_events', ['actor_key' => $actor->value]);
     }
 
     private function respond(ResponseAction $action, ActorKey $actor, int $until, DetectionPoint $point): void
     {
         $this->log->warning('appsensor.response', ['dp' => $point->value, 'action' => $action->value, 'actor' => $actor->value]);
         if (in_array($action, [ResponseAction::Throttle, ResponseAction::TemporaryLock, ResponseAction::Logout], true)) {
-            $this->db->delete(Tables::SECURITY_RESPONSES, ['actor_key' => $actor->value, 'response' => $action->value]);
-            $this->db->insert(Tables::SECURITY_RESPONSES, [
+            $this->db->delete('?_security_responses', ['actor_key' => $actor->value, 'response' => $action->value]);
+            $this->db->insert('?_security_responses', [
                 'actor_key' => $actor->value, 'response' => $action->value, 'until_ts' => $until,
             ]);
         }
