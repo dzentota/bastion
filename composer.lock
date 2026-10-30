@@ -569,12 +569,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/dzentota/router",
-                "reference": "66d2d47d2ed13dbf490474e615dcad4a0b0f152b"
+                "reference": "7f325088def91a224309362b71576bc760a48eb3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/dzentota/router/zipball/66d2d47d2ed13dbf490474e615dcad4a0b0f152b",
-                "reference": "66d2d47d2ed13dbf490474e615dcad4a0b0f152b",
+                "url": "https://api.github.com/repos/dzentota/router/zipball/7f325088def91a224309362b71576bc760a48eb3",
+                "reference": "7f325088def91a224309362b71576bc760a48eb3",
                 "shasum": ""
             },
             "require": {
@@ -609,7 +609,7 @@
                 }
             ],
             "description": "Fast and flexible security aware router.",
-            "time": "2026-10-30T19:37:33+00:00"
+            "time": "2026-10-30T20:24:13+00:00"
         },
         {
             "name": "dzentota/secure-db",
