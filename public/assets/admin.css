@@ -16,3 +16,4 @@ table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:8px;bord
 .media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}.media-grid figure{margin:0}
 .media-grid img{width:100%;height:110px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}.media-grid figcaption{font-size:13px;color:var(--muted);word-break:break-all}
 .block select+div,.block div select{margin-top:4px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}button.secondary{background:var(--muted)}.warning-inline{color:var(--err)}

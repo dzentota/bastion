@@ -35,6 +35,15 @@ final class AccountRepository implements CredentialStore
         return new Account($id, $username, $role, false);
     }
 
+    /** @return list<string> */
+    public function usernames(): array
+    {
+        return array_values(array_filter(array_map(
+            static fn (mixed $v) => is_string($v) ? $v : null,
+            $this->db->selectCol('SELECT username FROM ?_accounts'),
+        )));
+    }
+
     public function count(): int
     {
         return (int) $this->db->selectCell('SELECT COUNT(*) FROM ?_accounts');

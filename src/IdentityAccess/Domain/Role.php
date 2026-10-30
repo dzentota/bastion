@@ -14,7 +14,7 @@ enum Role: string
     {
         return match ($this) {
             self::Admin => Capability::cases(),
-            self::Editor => [Capability::ContentEdit, Capability::ContentEditOthers, Capability::ContentPublish, Capability::MediaUpload],
+            self::Editor => [Capability::ContentEdit, Capability::ContentEditOthers, Capability::ContentPublish, Capability::MediaUpload, Capability::CommentsModerate],
             self::Author => [Capability::ContentEdit, Capability::MediaUpload],
         };
     }

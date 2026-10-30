@@ -13,6 +13,7 @@ use HybridTM\Attributes\{AbuserStory, AssetId, Mitigation};
  * возможен только для SafeHtml, которое создаёт ядро.
  */
 #[AbuserStory('stored-xss-block')]
+#[AbuserStory('comment-xss')]
 #[Mitigation(cwe: 'CWE-79', description: 'Template output escaped by context; url filter allowlists schemes; raw output only for core-issued SafeHtml')]
 #[AssetId('bastion-app')]
 final class Renderer

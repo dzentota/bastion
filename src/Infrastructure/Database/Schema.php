@@ -58,6 +58,15 @@ final class Schema
                 uploaded_by {$key} NOT NULL,
                 uploaded_at INTEGER NOT NULL
             ){$suffix}",
+            "CREATE TABLE IF NOT EXISTS ?_comments (
+                id VARCHAR(32) PRIMARY KEY,
+                entry_id VARCHAR(36) NOT NULL,
+                author VARCHAR(255) NOT NULL,
+                body {$text} NOT NULL,
+                status VARCHAR(16) NOT NULL,
+                fingerprint VARCHAR(32) NOT NULL,
+                created_at INTEGER NOT NULL
+            ){$suffix}",
             "CREATE TABLE IF NOT EXISTS ?_audit (
                 id INTEGER PRIMARY KEY " . ($driver === 'mysql' ? 'AUTO_INCREMENT' : 'AUTOINCREMENT') . ",
                 actor_id {$key} NULL,

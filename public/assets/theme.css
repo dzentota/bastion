@@ -5,3 +5,6 @@ main,header.site,footer.site{max-width:680px;margin:0 auto;padding:16px}
 a{color:var(--accent)}time{color:var(--muted);font-size:15px}blockquote{border-left:3px solid var(--muted);margin:0;padding-left:16px;color:var(--muted)}
 footer.site{color:var(--muted);font-size:14px}
 figure{margin:24px 0}figure img{max-width:100%;height:auto}
+.comments{border-top:1px solid var(--muted);margin-top:32px;padding-top:8px}.comment{margin:16px 0}.comment-meta{font-size:15px;color:var(--muted);margin:0}
+.comment-form label{display:block;margin:12px 0}.comment-form input,.comment-form textarea{display:block;width:100%;box-sizing:border-box;font:inherit;padding:8px}
+.hp{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}.hint{font-size:14px;color:var(--muted)}.error{color:#b42318}.notice{color:var(--accent)}

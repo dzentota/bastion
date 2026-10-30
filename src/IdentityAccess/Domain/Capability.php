@@ -9,6 +9,7 @@ enum Capability: string
     case ContentEditOthers = 'content.edit_others';
     case ContentPublish = 'content.publish';
     case MediaUpload = 'media.upload';
+    case CommentsModerate = 'comments.moderate';
     case SettingsManage = 'settings.manage';
     case SecurityView = 'security.view';
 }

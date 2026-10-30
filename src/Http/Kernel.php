@@ -6,7 +6,11 @@ namespace Bastion\Http;
 use Bastion\Content\Domain\{EntryId, Slug};
 use Bastion\Content\Infrastructure\EntryRepository;
 use Bastion\Content\Rendering\BlockHtmlRenderer;
-use Bastion\Http\Controller\{AuthController, EntryController, InstallController, MediaController, PublicController};
+use Bastion\Comments\Application\{CommentPolicy, PostComment};
+use Bastion\Comments\Domain\{CommentAuthor, CommenterFingerprint, CommentId};
+use Bastion\Comments\Infrastructure\CommentRepository;
+use Bastion\Http\Controller\{AuthController, CommentController, EntryController, InstallController, MediaController, PublicController};
+use dzentota\Router\Middleware\HoneypotMiddleware;
 use Bastion\Media\Application\{MediaSanitizer, UploadMedia, UploadPolicy};
 use Bastion\Media\Domain\{MediaId, MediaStorage};
 use Bastion\Media\Infrastructure\{LocalMediaStorage, MediaRepository, S3Config, S3MediaStorage};
@@ -132,7 +136,32 @@ final class Kernel
             }),
             Installer::class => create(Installer::class)->constructor(get(Paths::class)),
 
-            PublicController::class => factory(fn (ContainerInterface $c) => new PublicController(self::get($c, EntryRepository::class), self::get($c, BlockHtmlRenderer::class), self::get($c, View::class))),
+            PublicController::class => factory(fn (ContainerInterface $c) => new PublicController(
+                self::get($c, EntryRepository::class), self::get($c, BlockHtmlRenderer::class), self::get($c, View::class),
+                self::get($c, CommentRepository::class), self::get($c, HoneypotMiddleware::class),
+            )),
+            CommentRepository::class => factory(fn (ContainerInterface $c) => new CommentRepository(self::get($c, Db::class))),
+            // Анонимная форма: подписанная метка времени + поле-ловушка (dzentota/router).
+            // Лимит частоты считает PostComment по хэшу IP в БД, поэтому резолвер IP отключает
+            // in-memory лимит middleware (бесполезный под PHP-FPM).
+            HoneypotMiddleware::class => factory(fn (ContainerInterface $c) => new HoneypotMiddleware(
+                ['website'], 3, false, self::get($c, LoggerInterface::class), null, 5,
+                self::derivedKey($paths, 'honeypot'), 6 * 3600, static fn (): ?string => null,
+            )),
+            PostComment::class => factory(fn (ContainerInterface $c) => new PostComment(
+                self::get($c, CommentRepository::class),
+                new CommenterFingerprint(self::derivedKey($paths, 'comment-fingerprint')),
+                new CommentPolicy(), self::get($c, AppSensor::class), self::get($c, ClockInterface::class),
+                array_values(array_map(
+                    static fn (string $n) => CommentAuthor::fromNative($n)->comparisonKey(),
+                    array_merge(['admin', 'administrator', 'moderator', 'owner', 'editor', 'staff', 'support', 'bastion'],
+                        self::get($c, AccountRepository::class)->usernames()),
+                )),
+            )),
+            CommentController::class => factory(fn (ContainerInterface $c) => new CommentController(
+                self::get($c, PostComment::class), self::get($c, CommentRepository::class), self::get($c, EntryRepository::class),
+                self::get($c, PublicController::class), self::get($c, View::class), self::get($c, AppSensor::class),
+            )),
             InstallController::class => factory(fn (ContainerInterface $c) => new InstallController(self::get($c, Installer::class), self::get($c, View::class), self::get($c, AppSensor::class))),
             AuthController::class => factory(fn (ContainerInterface $c) => new AuthController(self::get($c, TwoStepLogin::class), self::get($c, View::class))),
             EntryController::class => factory(fn (ContainerInterface $c) => new EntryController(self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, MediaRepository::class))),
@@ -190,6 +219,12 @@ final class Kernel
         $router->post('/admin/media', [MediaController::class, 'store'])->middleware($staff);
         $router->get('/media/{id}', [MediaController::class, 'serve'])->where(['id' => MediaId::class]);
 
+        $router->post('/comments', [CommentController::class, 'store'])->middleware(self::get($c, HoneypotMiddleware::class));
+        $router->get('/admin/comments', [CommentController::class, 'queue'])->middleware($staff);
+        foreach (['approve', 'reject', 'spam'] as $action) {
+            $router->post("/admin/comments/{id}/{$action}", [CommentController::class, $action])->where(['id' => CommentId::class])->middleware($staff);
+        }
+
         $router->get('/{slug}', [PublicController::class, 'show'])->where(['slug' => Slug::class]);
         return $router;
     }
@@ -204,7 +239,8 @@ final class Kernel
         return [
             new SessionMiddleware($storage, $cookie, 1800, 14400, false, true, false),
             new CsrfMiddleware(
-                new SessionCsrfStrategy($sensor), self::get($c, LoggerInterface::class), [], null,
+                // /comments — анонимная форма без сессии: защищена подписанной меткой времени (HoneypotMiddleware).
+                new SessionCsrfStrategy($sensor), self::get($c, LoggerInterface::class), ['/comments'], null,
                 failureResponseFactory: static function () use ($c): \Psr\Http\Message\ResponseInterface {
                     $r = self::get($c, ResponseFactoryInterface::class)->createResponse(403)->withHeader('Content-Type', 'text/plain; charset=utf-8');
                     $r->getBody()->write("The form has expired. Go back, reload the page and try again.\n");
@@ -224,6 +260,12 @@ final class Kernel
     {
         $service = $c->get($id);
         return $service instanceof $id ? $service : throw new \LogicException("Container returned unexpected type for {$id}");
+    }
+
+    /** Отдельный ключ на каждое назначение, выведенный из мастер-ключа var/keys/cache.key. */
+    private static function derivedKey(Paths $paths, string $purpose): string
+    {
+        return hash_hmac('sha256', 'bastion:' . $purpose, (string) file_get_contents($paths->cacheKey()), true);
     }
 
     private static function dir(string $d): string
