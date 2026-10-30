@@ -23,6 +23,8 @@ use HybridTM\Attributes\{AbuserStory, AssetId, Mitigation};
 #[AssetId('bastion-app')]
 final class TwoStepLogin
 {
+    /** Версия учётных данных, к которой привязана сессия (см. RequireStaff). */
+    public const CREDENTIALS_VERSION = 'credentials_version';
     private const PENDING = 'mfa_pending';
     private const PENDING_AT = 'mfa_pending_at';
     private const ENROLL_SECRET = 'mfa_enroll_secret';
@@ -150,6 +152,7 @@ final class TwoStepLogin
         // dzentota/identity: регенерирует id сессии и помечает её аутентифицированной.
         (new Authenticator($this->accounts, $session, AccountRepository::ARGON))
             ->completeLogin($request->withAttribute(SessionMiddleware::SESSION_ATTRIBUTE, $session), $account);
+        $session->set(self::CREDENTIALS_VERSION, $this->accounts->credentialsVersion($account->getId()));
         $this->audit->record(AuditAction::LoginSucceeded, $account->getId(), null, $this->ip($request));
     }
 

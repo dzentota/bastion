@@ -25,8 +25,18 @@
     <label>Secret key <input name="s3_secret_key" type="password" autocomplete="off"></label>
   </fieldset>
   <fieldset>
+    <legend>Outgoing mail (for password resets)</legend>
+    <p class="hint">Your hosting or email provider gives these settings. Only encrypted connections are used: port 465 (TLS) or 587 (STARTTLS). Leave empty to skip — passwords can then be reset from the server with <code>bin/bastion reset-link</code>.</p>
+    <label>SMTP server <input name="smtp_host" placeholder="smtp.example.com"></label>
+    <label>Port <input name="smtp_port" value="587" inputmode="numeric"></label>
+    <label>Username <input name="smtp_user" autocomplete="off"></label>
+    <label>Password <input name="smtp_password" type="password" autocomplete="off"></label>
+    <label>Send from <input name="smtp_from" type="email" placeholder="noreply@example.com"></label>
+  </fieldset>
+  <fieldset>
     <legend>Administrator</legend>
     <label>Username <input name="username" value="{{ username | attr }}" required autocomplete="username"></label>
+    <label>Email (for password resets) <input name="email" type="email" value="{{ email | attr }}" required autocomplete="email"></label>
     <label>Password (12+ characters, hard to guess) <input name="password" type="password" required minlength="12" autocomplete="new-password"></label>
   </fieldset>
   <button>Install</button>

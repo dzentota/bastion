@@ -47,11 +47,27 @@ switch ($cmd) {
         $sensor->clear(ActorKey::ip($arg));
         echo "Cleared AppSensor responses for IP {$arg}.\n";
         break;
+    case 'reset-link':
+        // Emergency Access: ссылка сброса без почты. Второй фактор после сброса по-прежнему нужен.
+        $key = \ParagonIE\Halite\KeyFactory::loadEncryptionKey($paths->encryptionKey());
+        $accounts = new \Bastion\IdentityAccess\Infrastructure\AccountRepository($db, $key);
+        $user = \Bastion\IdentityAccess\Domain\Username::tryParse(mb_strtolower($arg), $u) ? $accounts->findByUsername($u) : null;
+        if ($user === null) {
+            fwrite(STDERR, "No such account.\n");
+            exit(1);
+        }
+        $site = \Bastion\IdentityAccess\Domain\SiteUrl::fromNative($config['site']['url']);
+        $reset = new \Bastion\IdentityAccess\Application\PasswordReset(
+            $accounts, new \Bastion\IdentityAccess\Infrastructure\ResetTokenRepository($db), new \Bastion\Mail\UnconfiguredMailer(),
+            new \Bastion\Shared\Application\AfterResponse(), $site, $sensor, $audit, new SystemClock(),
+        );
+        echo "One-time reset link (valid 30 minutes):\n" . $reset->issueLinkFor($user) . "\n";
+        break;
     case 'audit:verify':
         $v = $audit->verify();
         echo ($v->intact ? 'OK: ' : 'TAMPERED: ') . $v->reason . " ({$v->entries} entries verified)\n";
         exit($v->intact ? 0 : 2);
     default:
-        echo "Usage:\n  bin/bastion unlock-account <username>\n  bin/bastion unlock-ip <ip>\n  bin/bastion audit:verify\n";
+        echo "Usage:\n  bin/bastion unlock-account <username>\n  bin/bastion unlock-ip <ip>\n  bin/bastion reset-link <username>\n  bin/bastion audit:verify\n";
         exit($cmd === '' ? 0 : 1);
 }

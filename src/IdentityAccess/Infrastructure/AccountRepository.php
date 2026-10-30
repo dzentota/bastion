@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 namespace Bastion\IdentityAccess\Infrastructure;
 
-use Bastion\IdentityAccess\Domain\{Account, AccountId, NewPassword, Role, Username};
+use Bastion\IdentityAccess\Domain\{Account, AccountId, NewPassword, Role, StaffEmail, Username};
+use Bastion\Infrastructure\Database\Row;
 use Dzentota\Identity\CredentialStore;
 use Dzentota\Identity\Identity;
 use ParagonIE\Halite\Symmetric\{Crypto, EncryptionKey};
@@ -22,17 +23,45 @@ final class AccountRepository implements CredentialStore
     {
     }
 
-    public function create(Username $username, NewPassword $password, Role $role): Account
+    public function create(Username $username, NewPassword $password, Role $role, ?StaffEmail $email = null): Account
     {
         $id = AccountId::generate();
         $this->db->insert('?_accounts', [
             'id' => $id,
+            'email' => $email?->toNative(),
             'username' => $username,
             'password_hash' => password_hash($password->toNative(), PASSWORD_ARGON2ID, self::ARGON),
             'role' => $role->value,
             'created_at' => gmdate('c'),
         ]);
         return new Account($id, $username, $role, false);
+    }
+
+    public function findByEmail(StaffEmail $email): ?Account
+    {
+        $id = $this->db->selectCell('SELECT id FROM ?_accounts WHERE email = ?', $email->toNative());
+        return is_string($id) ? $this->find($id) : null;
+    }
+
+    public function findByUsername(Username $username): ?Account
+    {
+        $id = $this->db->selectCell('SELECT id FROM ?_accounts WHERE username = ?', $username->toNative());
+        return is_string($id) ? $this->find($id) : null;
+    }
+
+    public function changePassword(AccountId $id, NewPassword $password): void
+    {
+        $this->db->query(
+            'UPDATE ?_accounts SET password_hash = ?, credentials_version = credentials_version + 1 WHERE id = ?',
+            password_hash($password->toNative(), PASSWORD_ARGON2ID, self::ARGON), $id->toNative(),
+        );
+    }
+
+    /** Версия учётных данных: растёт при каждой смене пароля. Сессии со старой версией недействительны. */
+    public function credentialsVersion(string $id): int
+    {
+        $row = $this->db->selectRow('SELECT credentials_version FROM ?_accounts WHERE id = ?', $id);
+        return $row ? Row::of($row)->int('credentials_version') : -1;
     }
 
     /** @return list<string> */

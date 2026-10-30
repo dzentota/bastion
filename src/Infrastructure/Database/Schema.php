@@ -23,6 +23,8 @@ final class Schema
                 role VARCHAR(16) NOT NULL,
                 totp_secret {$text} NULL,
                 totp_last_step INTEGER NOT NULL DEFAULT 0,
+                email {$key} NULL UNIQUE,
+                credentials_version INTEGER NOT NULL DEFAULT 0,
                 created_at VARCHAR(32) NOT NULL
             ){$suffix}",
             "CREATE TABLE IF NOT EXISTS ?_entries (
@@ -47,6 +49,14 @@ final class Schema
                 response VARCHAR(32) NOT NULL,
                 until_ts INTEGER NOT NULL,
                 PRIMARY KEY (actor_key, response)
+            ){$suffix}",
+            "CREATE TABLE IF NOT EXISTS ?_password_resets (
+                selector CHAR(32) PRIMARY KEY,
+                verifier_hash CHAR(64) NOT NULL,
+                account_id {$key} NOT NULL,
+                created_at INTEGER NOT NULL,
+                expires_at INTEGER NOT NULL,
+                used INTEGER NOT NULL DEFAULT 0
             ){$suffix}",
             "CREATE TABLE IF NOT EXISTS ?_media (
                 id VARCHAR(32) PRIMARY KEY,

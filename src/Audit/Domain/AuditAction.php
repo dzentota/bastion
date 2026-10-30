@@ -9,6 +9,8 @@ enum AuditAction: string
     case Installed = 'installed';
     case LoginSucceeded = 'login_succeeded';
     case Logout = 'logout';
+    case PasswordResetRequested = 'password_reset_requested';
+    case PasswordChanged = 'password_changed';
     case SecondFactorEnrolled = 'second_factor_enrolled';
     case EntryCreated = 'entry_created';
     case EntryUpdated = 'entry_updated';

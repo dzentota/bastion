@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\Http\Middleware;
 
+use Bastion\IdentityAccess\Application\TwoStepLogin;
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
 use Dzentota\Identity\Authenticator;
 use Dzentota\Session\Middleware\SessionMiddleware;
@@ -25,6 +26,14 @@ final class RequireStaff implements MiddlewareInterface
             ? (new Authenticator($this->accounts, null, AccountRepository::ARGON))->getCurrentIdentity($request)
             : null;
         if ($account === null) {
+            return $this->responses->createResponse(302)->withHeader('Location', '/admin/login');
+        }
+        // Сессия, начатая до смены пароля, недействительна (reset-session-persistence).
+        // (сессия гарантирована: без неё $account выше был бы null)
+        $session = $request->getAttribute(SessionMiddleware::SESSION_ATTRIBUTE);
+        $version = $session->get(TwoStepLogin::CREDENTIALS_VERSION);
+        if (!is_int($version) || $version !== $this->accounts->credentialsVersion($account->getId())) {
+            $session->destroy();
             return $this->responses->createResponse(302)->withHeader('Location', '/admin/login');
         }
         return $handler->handle($request->withAttribute(self::ACCOUNT, $account)->withAttribute(Authenticator::IDENTITY_ATTRIBUTE, $account));

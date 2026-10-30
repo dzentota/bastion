@@ -19,7 +19,8 @@ if (!$dev && !$https) {
 
 $f = new Psr17Factory();
 $request = (new ServerRequestCreator($f, $f, $f, $f))->fromGlobals();
-$response = (new Kernel(new Paths(dirname(__DIR__)), $https, $dev))->handle($request);
+$kernel = new Kernel(new Paths(dirname(__DIR__)), $https, $dev);
+$response = $kernel->handle($request);
 
 header_remove('X-Powered-By');
 http_response_code($response->getStatusCode());
@@ -29,3 +30,9 @@ foreach ($response->getHeaders() as $name => $values) {
     }
 }
 echo $response->getBody();
+
+// Ответ уже у клиента — теперь медленная работа (отправка писем) не влияет на время ответа.
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+}
+$kernel->terminate();

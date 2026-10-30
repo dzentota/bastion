@@ -7,7 +7,6 @@ declare(strict_types=1);
  * и тестом атаки. Гейт падает и в обратную сторону — если история из бэклога уже покрыта.
  */
 return [
-    'reset-token-theft',     // Identity: сброс пароля (split-token)
     'term-enumeration-dos',  // Taxonomy
     'malicious-extension',   // Extensions (Static Gate + Gossamer)
     'capability-overreach',  // Extensions (Facades)

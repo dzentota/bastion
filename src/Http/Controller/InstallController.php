@@ -4,7 +4,8 @@ declare(strict_types=1);
 namespace Bastion\Http\Controller;
 
 use Bastion\Http\View;
-use Bastion\IdentityAccess\Domain\{NewPassword, Username};
+use Bastion\IdentityAccess\Domain\{NewPassword, SiteUrl, StaffEmail, Username};
+use Bastion\Mail\SmtpConfig;
 use Bastion\Installation\{DbDriver, DbHost, DbName, Installer};
 use Bastion\Media\Domain\{MediaId, MediaKind, StorageKey};
 use Bastion\Media\Infrastructure\{S3Config, S3MediaStorage};
@@ -57,6 +58,28 @@ final class InstallController
             $errors[] = 'Choose a database driver';
         }
 
+        $email = StaffEmail::fromInput(Input::string($request, 'email', 320));
+        if ($email === null) {
+            $errors[] = 'Enter a valid email for the administrator (used for password resets).';
+        }
+        // Канонический адрес сайта фиксируется при установке владельцем (защищено install token).
+        $uri = $request->getUri();
+        $site = SiteUrl::tryParse(strtolower($uri->getScheme() . '://' . $uri->getHost() . ($uri->getPort() ? ':' . $uri->getPort() : '')), $s) ? $s : null;
+        if ($site === null) {
+            $errors[] = 'Cannot determine the site address.';
+        }
+        $smtp = null;
+        if (Input::string($request, 'smtp_host', 253) !== '') {
+            $smtp = ['host' => Input::string($request, 'smtp_host', 253), 'port' => (int) Input::string($request, 'smtp_port', 5),
+                'user' => Input::string($request, 'smtp_user', 254), 'password' => Input::string($request, 'smtp_password', 512),
+                'from' => strtolower(trim(Input::string($request, 'smtp_from', 320)))];
+            try {
+                new SmtpConfig($smtp['host'], $smtp['port'], $smtp['user'], $smtp['password'],
+                    StaffEmail::fromInput($smtp['from']) ?? throw new \InvalidArgumentException('Invalid sender email'));
+            } catch (\InvalidArgumentException $e) {
+                $errors[] = 'Mail: ' . $e->getMessage();
+            }
+        }
         $s3 = null;
         if (Input::string($request, 's3_endpoint', 300) !== '') {
             try {
@@ -74,9 +97,9 @@ final class InstallController
             }
         }
 
-        if ($errors === [] && $username !== null && $password !== null) {
+        if ($errors === [] && $username !== null && $password !== null && $email !== null && $site !== null) {
             try {
-                $this->installer->install($db, $username, $password, $s3);
+                $this->installer->install($db, $username, $password, $email, $site, $s3, $smtp);
                 return $this->view->redirect('/admin/login');
             } catch (\PDOException) {
                 $errors[] = 'Cannot connect to the database with these settings';
@@ -85,6 +108,7 @@ final class InstallController
         return $this->view->admin($request, 'install', [
             'errors' => array_values(array_filter($errors)),
             'username' => Input::string($request, 'username', 64),
+            'email' => Input::string($request, 'email', 320),
             'driver_mysql' => $driver?->toNative() === 'mysql',
         ], 422);
     }

@@ -11,7 +11,12 @@ use Bastion\Audit\Infrastructure\HmacAuditTrail;
 use Bastion\Comments\Application\{CommentPolicy, PostComment};
 use Bastion\Comments\Domain\{CommentAuthor, CommenterFingerprint, CommentId};
 use Bastion\Comments\Infrastructure\CommentRepository;
-use Bastion\Http\Controller\{AuditController, AuthController, CommentController, EntryController, InstallController, MediaController, PublicController};
+use Bastion\IdentityAccess\Application\PasswordReset;
+use Bastion\IdentityAccess\Domain\{SiteUrl, StaffEmail};
+use Bastion\IdentityAccess\Infrastructure\ResetTokenRepository;
+use Bastion\Mail\{Mailer, SmtpConfig, SmtpMailer, UnconfiguredMailer};
+use Bastion\Shared\Application\AfterResponse;
+use Bastion\Http\Controller\{AuditController, AuthController, PasswordResetController, CommentController, EntryController, InstallController, MediaController, PublicController};
 use dzentota\Router\Middleware\HoneypotMiddleware;
 use Bastion\Media\Application\{MediaSanitizer, UploadMedia, UploadPolicy};
 use Bastion\Media\Domain\{MediaId, MediaStorage};
@@ -56,9 +61,17 @@ final class Kernel
 {
     private readonly ContainerInterface $c;
 
-    public function __construct(Paths $paths, bool $https, bool $devCookies = false)
+    /** @param array<string, mixed> $overrides подмена сервисов (только для тестов) */
+    public function __construct(Paths $paths, bool $https, bool $devCookies = false, array $overrides = [])
     {
-        $this->c = self::container($paths, $https, $devCookies);
+        $this->c = self::container($paths, $https, $devCookies, $overrides);
+    }
+
+    /** Отложенная работа после отправки ответа (письма) — вызывается из public/index.php. */
+    public function terminate(): void
+    {
+        $log = self::get($this->c, LoggerInterface::class);
+        self::get($this->c, AfterResponse::class)->run(static fn (\Throwable $e) => $log->error('after_response.failed', ['type' => $e::class]));
     }
 
     public function handle(ServerRequestInterface $request): ResponseInterface
@@ -68,7 +81,8 @@ final class Kernel
         return $router->dispatch($request->getUri()->getPath(), $request->getMethod(), $request);
     }
 
-    private static function container(Paths $paths, bool $https, bool $devCookies): ContainerInterface
+    /** @param array<string, mixed> $overrides */
+    private static function container(Paths $paths, bool $https, bool $devCookies, array $overrides): ContainerInterface
     {
         $b = new ContainerBuilder();
         $b->useAutowiring(false);
@@ -96,6 +110,30 @@ final class Kernel
                 : new LogOnlyAppSensor(self::get($c, LoggerInterface::class))),
             AccountRepository::class => factory(fn (ContainerInterface $c) => new AccountRepository(
                 self::get($c, Db::class), KeyFactory::loadEncryptionKey($paths->encryptionKey()),
+            )),
+            AfterResponse::class => create(AfterResponse::class),
+            Mailer::class => factory(function () use ($paths): Mailer {
+                $cfg = ConfigLoaderFactory::createFromJsonAndEnv($paths->config(), 'BASTION_', false);
+                if (!is_string($cfg->getRaw('mail.host', null))) {
+                    return new UnconfiguredMailer();
+                }
+                $raw = static fn (string $k): string => is_string($v = $cfg->getRaw($k)) ? $v : throw new \UnexpectedValueException("Config {$k} must be a string");
+                return new SmtpMailer(new SmtpConfig(
+                    $raw('mail.host'), (int) $raw('mail.port'), $raw('mail.user'), $raw('mail.password'),
+                    StaffEmail::fromInput($raw('mail.from')) ?? throw new \UnexpectedValueException('Config mail.from must be an email'),
+                ));
+            }),
+            PasswordReset::class => factory(function (ContainerInterface $c) use ($paths): PasswordReset {
+                $cfg = ConfigLoaderFactory::createFromJsonAndEnv($paths->config(), 'BASTION_', false);
+                return new PasswordReset(
+                    self::get($c, AccountRepository::class), new ResetTokenRepository(self::get($c, Db::class)),
+                    self::get($c, Mailer::class), self::get($c, AfterResponse::class),
+                    SiteUrl::fromNative($cfg->getRaw('site.url')), self::get($c, AppSensor::class),
+                    self::get($c, AuditTrail::class), self::get($c, ClockInterface::class),
+                );
+            }),
+            PasswordResetController::class => factory(fn (ContainerInterface $c) => new PasswordResetController(
+                self::get($c, PasswordReset::class), self::get($c, View::class),
             )),
             HmacAuditTrail::class => factory(fn (ContainerInterface $c) => new HmacAuditTrail(
                 self::get($c, Db::class), self::derivedKey($paths, 'audit'), $paths->auditAnchor(), self::get($c, ClockInterface::class),
@@ -179,6 +217,7 @@ final class Kernel
 
             Router::class => factory(fn (ContainerInterface $c) => self::router($c, $paths, $https, $devCookies)),
         ]);
+        $b->addDefinitions($overrides);
         return $b->build();
     }
 
@@ -217,6 +256,11 @@ final class Kernel
         $router->get('/admin/2fa/setup', [AuthController::class, 'enrollForm']);
         $router->post('/admin/2fa/setup', [AuthController::class, 'enrollSubmit']);
         $router->post('/admin/logout', [AuthController::class, 'logout']);
+        $router->get('/admin/forgot', [PasswordResetController::class, 'form']);
+        $router->post('/admin/forgot', [PasswordResetController::class, 'request']);
+        $router->get('/admin/reset/{token}', [PasswordResetController::class, 'arrive'])->where(['token' => \Bastion\IdentityAccess\Domain\ResetToken::class]);
+        $router->get('/admin/reset', [PasswordResetController::class, 'choose']);
+        $router->post('/admin/reset', [PasswordResetController::class, 'complete']);
 
         $staff = new RequireStaff(self::get($c, AccountRepository::class), $responses);
         $router->get('/admin', [EntryController::class, 'index'])->middleware($staff);

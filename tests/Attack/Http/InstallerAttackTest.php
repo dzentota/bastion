@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 /** Abuser stories: hijack-installer, reinstall-over-live. */
 final class InstallerAttackTest extends TestCase
 {
-    private const FORM = ['driver' => 'sqlite', 'username' => 'attacker', 'password' => 'correct horse battery staple'];
+    private const FORM = ['driver' => 'sqlite', 'username' => 'attacker', 'password' => 'correct horse battery staple', 'email' => 'attacker@example.com'];
 
     public function testAttackerWithoutFileAccessCannotInstall(): void
     {

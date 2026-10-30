@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\Installation;
 
-use Bastion\IdentityAccess\Domain\{NewPassword, Role, Username};
+use Bastion\IdentityAccess\Domain\{NewPassword, Role, SiteUrl, StaffEmail, Username};
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
 use Bastion\Infrastructure\Database\{Connection, Schema};
 use Bastion\Audit\Domain\AuditAction;
@@ -49,8 +49,9 @@ final class Installer
 
     /**
      * @param array{driver: DbDriver, host?: DbHost, port?: int, name?: DbName, user?: DbName, password?: string} $db
+     * @param array{host: string, port: int, user: string, password: string, from: string}|null $smtp
      */
-    public function install(array $db, Username $admin, NewPassword $password, ?S3Config $s3 = null): void
+    public function install(array $db, Username $admin, NewPassword $password, StaffEmail $email, SiteUrl $site, ?S3Config $s3 = null, ?array $smtp = null): void
     {
         if ($this->paths->isInstalled()) {
             throw new \LogicException('Already installed');
@@ -60,6 +61,10 @@ final class Installer
         }
 
         $config = ['db' => ['driver' => $db['driver']->toNative()]];
+        $config['site'] = ['url' => $site->toNative()];
+        if ($smtp !== null) {
+            $config['mail'] = $smtp;
+        }
         $config['media'] = $s3 === null ? ['driver' => 'local'] : [
             'driver' => 's3', 'endpoint' => $s3->endpoint, 'region' => $s3->region, 'bucket' => $s3->bucket,
             'access_key' => $s3->accessKey, 'secret_key' => $s3->secretKey(),
@@ -85,7 +90,7 @@ final class Installer
         if ($accounts->count() > 0) {
             throw new \LogicException('Database already contains accounts');
         }
-        $owner = $accounts->create($admin, $password, Role::Admin);
+        $owner = $accounts->create($admin, $password, Role::Admin, $email);
         (new HmacAuditTrail($conn, hash_hmac('sha256', 'bastion:audit', (string) file_get_contents($this->paths->cacheKey()), true), $this->paths->auditAnchor(), new SystemClock()))
             ->record(AuditAction::Installed, $owner->getId(), null, 'unknown');
 

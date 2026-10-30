@@ -15,6 +15,9 @@ final class HttpHarness
     /** @var array<string, string> */
     private array $cookies = [];
     public ?ResponseInterface $last = null;
+    public CapturingMailer $mailer;
+    public string $ip = '198.51.100.10';
+    public string $host = 'localhost';
 
     public function __construct()
     {
@@ -24,6 +27,7 @@ final class HttpHarness
         symlink($repo . '/templates', $root . '/templates');
         symlink($repo . '/themes', $root . '/themes');
         $this->paths = new Paths($root);
+        $this->mailer = new CapturingMailer();
     }
 
     public function fresh(): self
@@ -72,12 +76,13 @@ final class HttpHarness
     private function send(string $method, string $path, array $form, array $files = []): ResponseInterface
     {
         // Kernel создаётся на каждый запрос, как в настоящем PHP-FPM.
-        $kernel = new Kernel($this->paths, false, true);
-        $req = (new ServerRequest($method, 'http://localhost' . $path, [], null, '1.1', ['REMOTE_ADDR' => '198.51.100.10']))
+        $kernel = new Kernel($this->paths, false, true, [\Bastion\Mail\Mailer::class => $this->mailer]);
+        $req = (new ServerRequest($method, 'http://' . $this->host . $path, [], null, '1.1', ['REMOTE_ADDR' => $this->ip]))
             ->withCookieParams($this->cookies)
             ->withParsedBody($method === 'POST' ? $form : null)
             ->withUploadedFiles($files);
         $res = $kernel->handle($req);
+        $kernel->terminate();
         foreach ($res->getHeader('Set-Cookie') as $c) {
             [$pair] = explode(';', $c, 2);
             [$k, $v] = explode('=', $pair, 2);
@@ -94,7 +99,7 @@ final class HttpHarness
     {
         $this->get('/install');
         $this->post('/install', ['install_token' => trim((string) file_get_contents($this->paths->installToken())),
-            'driver' => 'sqlite', 'username' => $user, 'password' => $pass]);
+            'driver' => 'sqlite', 'username' => $user, 'password' => $pass, 'email' => $user . '@example.com']);
         $this->get('/admin/login');
         $this->post('/admin/login', ['username' => $user, 'password' => $pass]);
         $this->get('/admin/2fa/setup');

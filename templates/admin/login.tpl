@@ -7,4 +7,5 @@
   <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
   <button>Continue</button>
 </form>
+<p><a href="/admin/forgot">Forgot your password?</a></p>
 {% include "partials/foot" %}

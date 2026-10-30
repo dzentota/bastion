@@ -6,13 +6,12 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "require": {
+        "php": ">=8.3",
         "ext-fileinfo": "*",
         "ext-gd": "*",
         "ext-mbstring": "*",
         "ext-pdo": "*",
         "ext-sodium": "*",
-        "php": ">=8.3",
-        "php-di/php-di": "^7.0",
         "bjeavons/zxcvbn-php": "^1.4",
         "dzentota/config-loader": "dev-main",
         "dzentota/dns-resolver": "dev-main",
@@ -31,7 +30,9 @@
         "nyholm/psr7-server": "^1.1",
         "paragonie/csp-builder": "^3.0",
         "paragonie/halite": "^5.1",
-        "spomky-labs/otphp": "^11.3"
+        "php-di/php-di": "^7.0",
+        "spomky-labs/otphp": "^11.3",
+        "symfony/mailer": "^7.3"
     },
     "require-dev": {
         "hybridtm/hybridtm": "dev-main",
