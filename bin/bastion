@@ -3,6 +3,7 @@
 // Bastion CLI. Emergency Access (ADR-0010): доступен только тому, у кого есть shell/SSH на сервере.
 declare(strict_types=1);
 
+use Bastion\Audit\Infrastructure\HmacAuditTrail;
 use Bastion\Infrastructure\Database\Connection;
 use Bastion\Installation\Paths;
 use Bastion\SecurityMonitoring\Domain\ActorKey;
@@ -14,7 +15,8 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 if (PHP_SAPI !== 'cli') {
     exit(1);
 }
-$paths = new Paths(dirname(__DIR__));
+$root = getenv('BASTION_ROOT');
+$paths = new Paths(is_string($root) && $root !== '' ? $root : dirname(__DIR__));
 [$cmd, $arg] = [$argv[1] ?? '', $argv[2] ?? ''];
 
 if (!$paths->isInstalled()) {
@@ -25,7 +27,8 @@ $config = json_decode((string) file_get_contents($paths->config()), true, 8, JSO
 $db = $config['db']['driver'] === 'mysql'
     ? Connection::mysql($config['db']['host'], (int) $config['db']['port'], $config['db']['name'], $config['db']['user'], $config['db']['password'])
     : Connection::sqlite($paths->sqlite());
-$sensor = new DbAppSensor($db, new SystemClock(), new FileLogger($paths->var('log/security.log')));
+$audit = new HmacAuditTrail($db, hash_hmac('sha256', 'bastion:audit', (string) file_get_contents($paths->cacheKey()), true), $paths->auditAnchor(), new SystemClock());
+$sensor = new DbAppSensor($db, new SystemClock(), new FileLogger($paths->var('log/security.log')), $audit);
 
 switch ($cmd) {
     case 'unlock-account':
@@ -44,7 +47,11 @@ switch ($cmd) {
         $sensor->clear(ActorKey::ip($arg));
         echo "Cleared AppSensor responses for IP {$arg}.\n";
         break;
+    case 'audit:verify':
+        $v = $audit->verify();
+        echo ($v->intact ? 'OK: ' : 'TAMPERED: ') . $v->reason . " ({$v->entries} entries verified)\n";
+        exit($v->intact ? 0 : 2);
     default:
-        echo "Usage:\n  bin/bastion unlock-account <username>\n  bin/bastion unlock-ip <ip>\n";
+        echo "Usage:\n  bin/bastion unlock-account <username>\n  bin/bastion unlock-ip <ip>\n  bin/bastion audit:verify\n";
         exit($cmd === '' ? 0 : 1);
 }

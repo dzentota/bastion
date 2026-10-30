@@ -68,14 +68,13 @@ final class Schema
                 created_at INTEGER NOT NULL
             ){$suffix}",
             "CREATE TABLE IF NOT EXISTS ?_audit (
-                id INTEGER PRIMARY KEY " . ($driver === 'mysql' ? 'AUTO_INCREMENT' : 'AUTOINCREMENT') . ",
-                actor_id {$key} NULL,
-                action VARCHAR(64) NOT NULL,
-                subject {$key} NULL,
+                seq INTEGER PRIMARY KEY,
+                at INTEGER NOT NULL,
+                action VARCHAR(32) NOT NULL,
+                actor VARCHAR(64) NULL,
+                subject VARCHAR(64) NULL,
                 ip VARCHAR(64) NOT NULL,
-                created_at VARCHAR(32) NOT NULL,
-                prev_hash CHAR(64) NOT NULL,
-                hash CHAR(64) NOT NULL
+                mac CHAR(64) NOT NULL
             ){$suffix}",
         ];
     }

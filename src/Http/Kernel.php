@@ -6,10 +6,12 @@ namespace Bastion\Http;
 use Bastion\Content\Domain\{EntryId, Slug};
 use Bastion\Content\Infrastructure\EntryRepository;
 use Bastion\Content\Rendering\BlockHtmlRenderer;
+use Bastion\Audit\Domain\AuditTrail;
+use Bastion\Audit\Infrastructure\HmacAuditTrail;
 use Bastion\Comments\Application\{CommentPolicy, PostComment};
 use Bastion\Comments\Domain\{CommentAuthor, CommenterFingerprint, CommentId};
 use Bastion\Comments\Infrastructure\CommentRepository;
-use Bastion\Http\Controller\{AuthController, CommentController, EntryController, InstallController, MediaController, PublicController};
+use Bastion\Http\Controller\{AuditController, AuthController, CommentController, EntryController, InstallController, MediaController, PublicController};
 use dzentota\Router\Middleware\HoneypotMiddleware;
 use Bastion\Media\Application\{MediaSanitizer, UploadMedia, UploadPolicy};
 use Bastion\Media\Domain\{MediaId, MediaStorage};
@@ -90,10 +92,17 @@ final class Kernel
                 return Connection::sqlite($paths->sqlite());
             }),
             AppSensor::class => factory(fn (ContainerInterface $c) => $paths->isInstalled()
-                ? new DbAppSensor(self::get($c, Db::class), self::get($c, ClockInterface::class), self::get($c, LoggerInterface::class))
+                ? new DbAppSensor(self::get($c, Db::class), self::get($c, ClockInterface::class), self::get($c, LoggerInterface::class), self::get($c, AuditTrail::class))
                 : new LogOnlyAppSensor(self::get($c, LoggerInterface::class))),
             AccountRepository::class => factory(fn (ContainerInterface $c) => new AccountRepository(
                 self::get($c, Db::class), KeyFactory::loadEncryptionKey($paths->encryptionKey()),
+            )),
+            HmacAuditTrail::class => factory(fn (ContainerInterface $c) => new HmacAuditTrail(
+                self::get($c, Db::class), self::derivedKey($paths, 'audit'), $paths->auditAnchor(), self::get($c, ClockInterface::class),
+            )),
+            AuditTrail::class => get(HmacAuditTrail::class),
+            AuditController::class => factory(fn (ContainerInterface $c) => new AuditController(
+                self::get($c, HmacAuditTrail::class), self::get($c, View::class), self::get($c, AppSensor::class),
             )),
             MediaRepository::class => factory(fn (ContainerInterface $c) => new MediaRepository(self::get($c, Db::class))),
             UploadPolicy::class => create(UploadPolicy::class),
@@ -112,6 +121,7 @@ final class Kernel
             UploadMedia::class => factory(fn (ContainerInterface $c) => new UploadMedia(
                 new MediaSanitizer(self::get($c, UploadPolicy::class)), self::get($c, MediaStorage::class), self::get($c, MediaRepository::class),
                 self::get($c, UploadPolicy::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, LoggerInterface::class),
+                self::get($c, AuditTrail::class),
             )),
             MediaController::class => factory(fn (ContainerInterface $c) => new MediaController(
                 self::get($c, UploadMedia::class), self::get($c, MediaRepository::class), self::get($c, MediaStorage::class),
@@ -120,7 +130,7 @@ final class Kernel
             EntryRepository::class => factory(fn (ContainerInterface $c) => new EntryRepository(self::get($c, Db::class))),
             TwoStepLogin::class => factory(fn (ContainerInterface $c) => new TwoStepLogin(
                 new PasswordVerifier(self::get($c, AccountRepository::class)), self::get($c, AccountRepository::class),
-                self::get($c, AppSensor::class), self::get($c, ClockInterface::class),
+                self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, AuditTrail::class),
             )),
             BlockHtmlRenderer::class => factory(fn () => new BlockHtmlRenderer(TrustedHtmlToken::issue())),
             View::class => factory(function (ContainerInterface $c) use ($paths): View {
@@ -161,10 +171,11 @@ final class Kernel
             CommentController::class => factory(fn (ContainerInterface $c) => new CommentController(
                 self::get($c, PostComment::class), self::get($c, CommentRepository::class), self::get($c, EntryRepository::class),
                 self::get($c, PublicController::class), self::get($c, View::class), self::get($c, AppSensor::class),
+                self::get($c, AuditTrail::class),
             )),
             InstallController::class => factory(fn (ContainerInterface $c) => new InstallController(self::get($c, Installer::class), self::get($c, View::class), self::get($c, AppSensor::class))),
             AuthController::class => factory(fn (ContainerInterface $c) => new AuthController(self::get($c, TwoStepLogin::class), self::get($c, View::class))),
-            EntryController::class => factory(fn (ContainerInterface $c) => new EntryController(self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, MediaRepository::class))),
+            EntryController::class => factory(fn (ContainerInterface $c) => new EntryController(self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, MediaRepository::class), self::get($c, AuditTrail::class))),
 
             Router::class => factory(fn (ContainerInterface $c) => self::router($c, $paths, $https, $devCookies)),
         ]);
@@ -220,6 +231,7 @@ final class Kernel
         $router->get('/media/{id}', [MediaController::class, 'serve'])->where(['id' => MediaId::class]);
 
         $router->post('/comments', [CommentController::class, 'store'])->middleware(self::get($c, HoneypotMiddleware::class));
+        $router->get('/admin/audit', [AuditController::class, 'index'])->middleware($staff);
         $router->get('/admin/comments', [CommentController::class, 'queue'])->middleware($staff);
         foreach (['approve', 'reject', 'spam'] as $action) {
             $router->post("/admin/comments/{id}/{$action}", [CommentController::class, $action])->where(['id' => CommentId::class])->middleware($staff);

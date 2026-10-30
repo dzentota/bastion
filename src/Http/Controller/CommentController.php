@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\Http\Controller;
 
+use Bastion\Audit\Domain\{AuditAction, AuditTrail};
 use Bastion\Comments\Application\PostComment;
 use Bastion\Comments\Domain\{Comment, CommentId, CommentStatus, RejectedComment};
 use Bastion\Comments\Infrastructure\CommentRepository;
@@ -25,6 +26,7 @@ final class CommentController
         private readonly PublicController $public,
         private readonly View $view,
         private readonly AppSensor $sensor,
+        private readonly AuditTrail $audit,
     ) {
     }
 
@@ -88,6 +90,11 @@ final class CommentController
         if (!$this->comments->setStatus($id, $status)) {
             return $this->view->admin($request, 'not-found', [], 404);
         }
+        $this->audit->record(match ($status) {
+            CommentStatus::Approved => AuditAction::CommentApproved,
+            CommentStatus::Spam => AuditAction::CommentMarkedSpam,
+            default => AuditAction::CommentRejected,
+        }, $this->account($request)->getId(), $id->toNative(), $this->ip($request));
         return $this->view->redirect('/admin/comments');
     }
 

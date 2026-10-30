@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\Media\Application;
 
+use Bastion\Audit\Domain\{AuditAction, AuditTrail};
 use Bastion\IdentityAccess\Domain\Account;
 use Bastion\Media\Domain\{DisplayName, MediaId, MediaItem, MediaStorage, RejectedUpload};
 use Bastion\Media\Infrastructure\MediaRepository;
@@ -25,10 +26,11 @@ final class UploadMedia
         private readonly AppSensor $sensor,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $log,
+        private readonly AuditTrail $audit,
     ) {
     }
 
-    public function upload(Account $uploader, UploadedFileInterface $file): MediaItem
+    public function upload(Account $uploader, UploadedFileInterface $file, string $ip = 'unknown'): MediaItem
     {
         $actor = ActorKey::account($uploader->getId());
         if ($file->getError() !== UPLOAD_ERR_OK) {
@@ -65,6 +67,7 @@ final class UploadMedia
         );
         $this->storage->put($item->key(), $clean->bytes, $item->kind);
         $this->media->add($item);
+        $this->audit->record(AuditAction::MediaUploaded, $uploader->getId(), $item->id->toNative(), $ip);
         if ($this->storage->isDegraded()) {
             $this->log->warning('media.degraded_storage', ['media' => $item->id->toNative()]);
         }

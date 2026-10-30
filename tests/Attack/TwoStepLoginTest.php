@@ -33,7 +33,7 @@ final class TwoStepLoginTest extends TestCase
         $this->clock = new FrozenClock();
         $this->accounts = new AccountRepository($db, KeyFactory::generateEncryptionKey());
         $this->login = new TwoStepLogin(new PasswordVerifier($this->accounts), $this->accounts,
-            new DbAppSensor($db, $this->clock, new NullLogger()), $this->clock);
+            new DbAppSensor($db, $this->clock, new NullLogger()), $this->clock, new \Bastion\Tests\Support\RecordingAuditTrail());
         $u = Username::fromNative('owner');
         $this->accounts->create($u, NewPassword::forUser(self::PASS, $u), Role::Admin);
     }

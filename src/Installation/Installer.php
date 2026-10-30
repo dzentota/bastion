@@ -6,7 +6,10 @@ namespace Bastion\Installation;
 use Bastion\IdentityAccess\Domain\{NewPassword, Role, Username};
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
 use Bastion\Infrastructure\Database\{Connection, Schema};
+use Bastion\Audit\Domain\AuditAction;
+use Bastion\Audit\Infrastructure\HmacAuditTrail;
 use Bastion\Media\Infrastructure\S3Config;
+use Bastion\Shared\Infrastructure\SystemClock;
 use ParagonIE\Halite\KeyFactory;
 use HybridTM\Attributes\{AbuserStory, AssetId, Mitigation};
 
@@ -82,7 +85,9 @@ final class Installer
         if ($accounts->count() > 0) {
             throw new \LogicException('Database already contains accounts');
         }
-        $accounts->create($admin, $password, Role::Admin);
+        $owner = $accounts->create($admin, $password, Role::Admin);
+        (new HmacAuditTrail($conn, hash_hmac('sha256', 'bastion:audit', (string) file_get_contents($this->paths->cacheKey()), true), $this->paths->auditAnchor(), new SystemClock()))
+            ->record(AuditAction::Installed, $owner->getId(), null, 'unknown');
 
         $this->writeSecret($this->paths->config(), json_encode($config, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
         $this->writeSecret($this->paths->installedLock(), gmdate('c') . "\n");

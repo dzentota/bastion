@@ -12,5 +12,4 @@ return [
     'malicious-extension',   // Extensions (Static Gate + Gossamer)
     'capability-overreach',  // Extensions (Facades)
     'update-hijack',         // Updates (Chronicle)
-    'audit-tamper',          // Audit (hash chain)
 ];

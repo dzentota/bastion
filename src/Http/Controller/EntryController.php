@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\Http\Controller;
 
+use Bastion\Audit\Domain\{AuditAction, AuditTrail};
 use Bastion\Content\Domain\{Entry, EntryId, EntryType, Slug, Title};
 use Bastion\Content\Domain\Block\{Block, BlockList, Heading, Image, InvalidBlock, Paragraph, Quote};
 use Bastion\Media\Domain\{MediaId, MediaItem};
@@ -27,6 +28,7 @@ final class EntryController
         private readonly AppSensor $sensor,
         private readonly \Psr\Clock\ClockInterface $clock,
         private readonly MediaRepository $media,
+        private readonly AuditTrail $audit,
     ) {
     }
 
@@ -86,6 +88,7 @@ final class EntryController
         }
         $entry->publish($this->clock->now());
         $this->entries->save($entry);
+        $this->audit->record(AuditAction::EntryPublished, $this->account($request)->getId(), $entry->id->toNative(), $this->ip($request));
         return $this->view->redirect('/admin');
     }
 
@@ -112,12 +115,14 @@ final class EntryController
             return $this->editor($request, $entry, ['title' => $rawTitle, 'slug' => $rawSlug], $rows, $errors, 422);
         }
 
+        $action = $entry === null ? AuditAction::EntryCreated : AuditAction::EntryUpdated;
         if ($entry === null) {
             $entry = Entry::draft(EntryType::Post, $title, $slug, $blocks, $this->account($request)->getId());
         } else {
             $entry->revise($title, $slug, $blocks);
         }
         $this->entries->save($entry);
+        $this->audit->record($action, $this->account($request)->getId(), $entry->id->toNative(), $this->ip($request));
         return $this->view->redirect('/admin/entries/' . $entry->id->toNative() . '/edit');
     }
 

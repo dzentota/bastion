@@ -35,6 +35,11 @@ final class Row
         };
     }
 
+    public function nullableStr(string $col): ?string
+    {
+        return ($this->data[$col] ?? null) === null ? null : $this->str($col);
+    }
+
     public function nullableInt(string $col): ?int
     {
         return ($this->data[$col] ?? null) === null ? null : $this->int($col);

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\IdentityAccess\Application;
 
+use Bastion\Audit\Domain\{AuditAction, AuditTrail};
 use Bastion\IdentityAccess\Domain\{Account, AccountId};
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
 use Bastion\SecurityMonitoring\Domain\{ActorKey, AppSensor, DetectionPoint, ResponseAction};
@@ -32,6 +33,7 @@ final class TwoStepLogin
         private readonly AccountRepository $accounts,
         private readonly AppSensor $sensor,
         private readonly ClockInterface $clock,
+        private readonly AuditTrail $audit,
     ) {
     }
 
@@ -127,13 +129,16 @@ final class TwoStepLogin
         $this->accounts->saveTotpSecret($account->id, new HiddenString($secret));
         $this->accounts->consumeTotpStep($account->id, $step);
         $session->remove(self::ENROLL_SECRET);
+        $this->audit->record(AuditAction::SecondFactorEnrolled, $account->getId(), null, $this->ip($request));
         $this->complete($request, $session, $this->accounts->find($account->getId()) ?? $account);
         return true;
     }
 
-    public function logout(SessionManager $session): void
+    public function logout(ServerRequestInterface $request, SessionManager $session): void
     {
+        $actor = $session->get(Authenticator::AUTH_USER_ID);
         $session->destroy();
+        $this->audit->record(AuditAction::Logout, is_string($actor) ? $actor : null, null, $this->ip($request));
     }
 
     #[AbuserStory('session-hijack')]
@@ -145,6 +150,7 @@ final class TwoStepLogin
         // dzentota/identity: регенерирует id сессии и помечает её аутентифицированной.
         (new Authenticator($this->accounts, $session, AccountRepository::ARGON))
             ->completeLogin($request->withAttribute(SessionMiddleware::SESSION_ATTRIBUTE, $session), $account);
+        $this->audit->record(AuditAction::LoginSucceeded, $account->getId(), null, $this->ip($request));
     }
 
     /** @return int|null номер шага TOTP, которому соответствует код (окно ±1 шаг) */

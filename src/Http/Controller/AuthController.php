@@ -67,9 +67,9 @@ final class AuthController
         return $this->enrollForm($request, $session, 'Invalid code.');
     }
 
-    public function logout(SessionManager $session): ResponseInterface
+    public function logout(ServerRequestInterface $request, SessionManager $session): ResponseInterface
     {
-        $this->login->logout($session);
+        $this->login->logout($request, $session);
         return $this->view->redirect('/admin/login');
     }
 }

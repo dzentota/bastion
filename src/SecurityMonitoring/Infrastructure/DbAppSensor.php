@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\SecurityMonitoring\Infrastructure;
 
+use Bastion\Audit\Domain\{AuditAction, AuditTrail};
 use Bastion\SecurityMonitoring\Domain\{ActorKey, AppSensor, DetectionPoint, ResponseAction};
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -20,6 +21,7 @@ final class DbAppSensor implements AppSensor
         private readonly Db $db,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $log,
+        private readonly ?AuditTrail $audit = null,
     ) {
     }
 
@@ -53,6 +55,7 @@ final class DbAppSensor implements AppSensor
 
     public function clear(ActorKey $actor): void
     {
+        $this->audit?->record(AuditAction::EmergencyUnlock, 'cli', null, 'cli');
         $this->db->delete('?_security_responses', ['actor_key' => $actor->value]);
         $this->db->delete('?_security_events', ['actor_key' => $actor->value]);
     }
@@ -60,6 +63,7 @@ final class DbAppSensor implements AppSensor
     private function respond(ResponseAction $action, ActorKey $actor, int $until, DetectionPoint $point): void
     {
         $this->log->warning('appsensor.response', ['dp' => $point->value, 'action' => $action->value, 'actor' => $actor->value]);
+        $this->audit?->record(AuditAction::SecurityResponse, 'system', $point->value . ':' . $action->value, 'unknown');
         if (in_array($action, [ResponseAction::Throttle, ResponseAction::TemporaryLock, ResponseAction::Logout], true)) {
             $this->db->delete('?_security_responses', ['actor_key' => $actor->value, 'response' => $action->value]);
             $this->db->insert('?_security_responses', [

@@ -47,7 +47,8 @@ final class MediaController
             return $this->index($request, 'Choose a file to upload.', 422);
         }
         try {
-            $this->upload->upload($account, $file);
+            $ip = $request->getServerParams()['REMOTE_ADDR'] ?? '';
+            $this->upload->upload($account, $file, is_string($ip) ? $ip : 'unknown');
         } catch (RejectedUpload $e) {
             return $this->index($request, $e->userMessage(), 422);
         }
