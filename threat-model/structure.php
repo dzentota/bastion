@@ -48,4 +48,22 @@ return static function (ThreatModel $model): void {
     $s->assetIds = ['app-filesystem'];
     $s->requiredCwes = ['CWE-494'];
     $model->addAbuseCase($s);
+
+    $s = new AbuseCase('threat-model-export-tamper', 'Show a false security picture through the threat-model export');
+    $s->asA = 'attacker with file write on the hosting or in the release pipeline';
+    $s->iWant = 'edit build/threat-model.json so every story looks covered, or make it crash the renderer';
+    $s->soThat = 'readers trust a weaker system, or the documentation site breaks';
+    $s->actorId = 'malicious-publisher';
+    $s->assetIds = ['bastion-app', 'app-filesystem'];
+    $s->requiredCwes = ['CWE-20', 'CWE-494'];
+    $model->addAbuseCase($s);
+
+    $s = new AbuseCase('svg-injection', 'Inject script through the generated data-flow diagram');
+    $s->asA = 'contributor to the threat model';
+    $s->iWant = 'put markup into a component or flow name';
+    $s->soThat = 'it runs as SVG or HTML in visitors\' browsers';
+    $s->actorId = 'malicious-author';
+    $s->assetIds = ['bastion-app'];
+    $s->requiredCwes = ['CWE-79'];
+    $model->addAbuseCase($s);
 };

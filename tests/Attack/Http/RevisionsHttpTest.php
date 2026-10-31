@@ -11,7 +11,7 @@ use ParagonIE\Halite\KeyFactory;
 use PHPUnit\Framework\TestCase;
 use SecureDb\Db;
 
-/** Ревизии. Abuser stories: unpublished-change-leak, revision-tamper, revision-snooping. */
+/** Ревизии. Abuser stories: unpublished-change-leak, revision-tamper, revision-snooping, preview-exposure. */
 final class RevisionsHttpTest extends TestCase
 {
     private HttpHarness $h;

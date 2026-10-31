@@ -6,7 +6,7 @@ namespace Bastion\Tests\Attack\Http;
 use Bastion\Tests\Support\HttpHarness;
 use PHPUnit\Framework\TestCase;
 
-/** term-enumeration-dos: листинги ограничены, перебор не стоит серверу работы. */
+/** Abuser story: term-enumeration-dos — листинги ограничены, перебор не стоит серверу работы. */
 final class TaxonomyAttackTest extends TestCase
 {
     private function post(HttpHarness $h, string $slug, string $categories, string $tags): int

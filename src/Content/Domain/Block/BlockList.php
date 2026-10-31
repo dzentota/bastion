@@ -20,6 +20,7 @@ final class BlockList implements \IteratorAggregate, \Countable
         'code' => Code::class,
         'table' => Table::class,
         'callout' => Callout::class,
+        'threatmodel' => ThreatModelEmbed::class,
     ];
 
     /** @param list<Block> $blocks */

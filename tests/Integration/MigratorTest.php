@@ -8,7 +8,7 @@ use Bastion\Infrastructure\Database\Migrations\{Catalog, DatabaseBackup, M0001Ba
 use PHPUnit\Framework\TestCase;
 use SecureDb\Db;
 
-/** ADR-0018: версионированные миграции с контрольными суммами. */
+/** ADR-0018: версионированные миграции с контрольными суммами. Abuser story: migration-data-loss (копия до миграции, откат транзакцией). */
 final class MigratorTest extends TestCase
 {
     private string $dir;

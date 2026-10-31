@@ -191,5 +191,8 @@
     "menu_add": "Add page",
     "menu_full": "The menu is full (10 items).",
     "skip_to_content": "Skip to content",
-    "admin_nav": "Admin sections"
+    "admin_nav": "Admin sections",
+    "block_threatmodel": "Threat model",
+    "block_option_threatmodel": "Threat model view",
+    "blocks_hint_tm": "Threat model: pick overview, matrix, findings or dfd in Option; the text field is not used."
 }

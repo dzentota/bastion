@@ -31,6 +31,7 @@
         <option value="code"{% if row.is_code %} selected{% endif %}>{{ t.block_code }}</option>
         <option value="table"{% if row.is_table %} selected{% endif %}>{{ t.block_table }}</option>
         <option value="callout"{% if row.is_callout %} selected{% endif %}>{{ t.block_callout }}</option>
+        <option value="threatmodel"{% if row.is_threatmodel %} selected{% endif %}>{{ t.block_threatmodel }}</option>
       </select>
       <div>
         <textarea name="blocks[{{ row.i | attr }}][text]" rows="3" aria-label="{{ t.block_text | attr }}">{{ row.text }}</textarea>
@@ -42,12 +43,14 @@
           <option value="">{{ t.block_option_none }}</option>
           <optgroup label="{{ t.block_option_language | attr }}">{% each row.languages as o %}<option value="{{ o.value | attr }}"{% if o.selected %} selected{% endif %}>{{ o.value }}</option>{% endeach %}</optgroup>
           <optgroup label="{{ t.block_option_callout | attr }}">{% each row.variants as o %}<option value="{{ o.value | attr }}"{% if o.selected %} selected{% endif %}>{{ o.value }}</option>{% endeach %}</optgroup>
+          <optgroup label="{{ t.block_option_threatmodel | attr }}">{% each row.tm_views as o %}<option value="{{ o.value | attr }}"{% if o.selected %} selected{% endif %}>{{ o.value }}</option>{% endeach %}</optgroup>
           <optgroup label="{{ t.block_option_table | attr }}"><option value="header"{% if row.header %} selected{% endif %}>{{ t.block_option_header }}</option></optgroup>
         </select>
       </div>
     </div>
     {% endeach %}
     <p class="hint">{{ t.blocks_hint_new }}</p>
+    <p class="hint">{{ t.blocks_hint_tm }}</p>
     <p class="hint">{{ t.blocks_hint }} <a href="/admin/media">{{ t.blocks_hint_media_link }}</a>{{ t.blocks_hint_suffix }}</p>
   </fieldset>
   <button>{% if entry.published %}{{ t.save_changes }}{% else %}{{ t.save_draft }}{% endif %}</button>

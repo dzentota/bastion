@@ -1,0 +1,27 @@
+#!/usr/bin/env php
+<?php
+// Экспорт модели угроз для сайта документации (ADR-0023). Запускается при сборке релиза:
+//   bin/threat-model-export [--out=build/threat-model.json]
+declare(strict_types=1);
+
+require dirname(__DIR__) . '/vendor/autoload.php';
+
+if (PHP_SAPI !== 'cli') {
+    exit(1);
+}
+$root = dirname(__DIR__);
+$out = $root . '/build/threat-model.json';
+foreach (array_slice($argv, 1) as $a) {
+    if (preg_match('/^--out=(.+)$/', $a, $m)) {
+        $out = $m[1];
+    }
+}
+$data = \Bastion\Release\ThreatModelExport::build($root);
+if (!is_dir(dirname($out))) {
+    mkdir(dirname($out), 0755, true);
+}
+file_put_contents($out, json_encode($data, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n");
+$byStatus = array_count_values(array_column($data['stories'], 'status'));
+ksort($byStatus);
+echo "Wrote {$out}: " . count($data['stories']) . ' stories (' . http_build_query($byStatus, '', ', ') . '), '
+    . count($data['findings']) . ' findings, ' . count($data['flows']) . " flows.\n";

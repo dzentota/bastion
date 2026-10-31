@@ -32,4 +32,12 @@ foreach ($backlog as $id) {
         $fail = true;
     }
 }
+// ADR-0008: у каждой реализованной истории есть тест атаки, назвавший её в docblock.
+require_once $root . '/vendor/autoload.php';
+foreach (\Bastion\Release\ThreatModelExport::build($root)['stories'] as $story) {
+    if ($story['status'] !== 'backlog' && $story['tests'] === []) {
+        echo "UNTESTED {$story['id']}: no test names it (\"Abuser story: {$story['id']}\" in a test docblock)\n";
+        $fail = true;
+    }
+}
 exit($fail ? 1 : 0);

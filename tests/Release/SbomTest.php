@@ -6,6 +6,7 @@ namespace Bastion\Tests\Release;
 use Bastion\Release\Sbom;
 use PHPUnit\Framework\TestCase;
 
+/** Abuser stories: vendored-asset-tamper (подмена вендорных пакетов и шрифтов), threat-model-export-tamper (хэш экспорта в SBOM). */
 final class SbomTest extends TestCase
 {
     private string $vendor;
@@ -78,5 +79,18 @@ final class SbomTest extends TestCase
         self::assertStringContainsString('@fontsource/x: asset files differ', implode("\n", Sbom::verify($sbom, $this->vendor, [], $root)));
         unlink($root . '/public/assets/fonts/a.woff2');
         self::assertStringContainsString('@fontsource/x: asset files differ', implode("\n", Sbom::verify($sbom, $this->vendor, [], $root)));
+    }
+
+    public function testThreatModelExportHashIsRecordedAndVerified(): void
+    {
+        $root = sys_get_temp_dir() . '/bastion-sbom-tm-' . bin2hex(random_bytes(4));
+        mkdir($root . '/build', 0777, true);
+        mkdir($root . '/public/assets/fonts', 0777, true);
+        file_put_contents($root . '/public/assets/fonts/fonts.json', '[]');
+        file_put_contents($root . '/build/threat-model.json', '{"format":"bastion-threat-model"}');
+        $sbom = Sbom::generate($this->lock, $this->vendor, '1.0.0', 0, $root);
+        self::assertSame([], Sbom::verify($sbom, $this->vendor, ['acme/lib', 'acme/branchy'], $root));
+        file_put_contents($root . '/build/threat-model.json', '{"format":"bastion-threat-model","all":"covered"}');
+        self::assertStringContainsString('build/threat-model.json: differs', implode("\n", Sbom::verify($sbom, $this->vendor, [], $root)));
     }
 }

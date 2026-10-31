@@ -22,7 +22,7 @@ use Bastion\Taxonomy\Infrastructure\TermRepository;
 use Bastion\Updates\Application\{UpdateChannel, UpdateConfig, UpdateTransport};
 use Bastion\Updates\Infrastructure\{HttpUpdateTransport, LedgerStore};
 use Bastion\Extensions\Infrastructure\{ExtensionRegistry, PublishedContentReader};
-use Bastion\Http\Controller\{AuditController, DatabaseController, MenuController, PreferencesController, AuthController, ExtensionController, PasswordResetController, CommentController, EntryController, TermController, InstallController, MediaController, PublicController};
+use Bastion\Http\Controller\{AuditController, DatabaseController, MenuController, PreferencesController, ThreatController, AuthController, ExtensionController, PasswordResetController, CommentController, EntryController, TermController, InstallController, MediaController, PublicController};
 use dzentota\Router\Middleware\HoneypotMiddleware;
 use Bastion\Media\Application\{MediaSanitizer, UploadMedia, UploadPolicy};
 use Bastion\Media\Domain\{MediaId, MediaStorage};
@@ -33,6 +33,8 @@ use Bastion\IdentityAccess\Application\{PasswordVerifier, TwoStepLogin};
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
 use Bastion\Infrastructure\Database\{Connection, Tables};
 use Bastion\Shared\I18n\StringCatalog;
+use Bastion\ThreatModel\Infrastructure\ThreatModelSource;
+use Bastion\ThreatModel\Rendering\ThreatModelViews;
 use Bastion\Infrastructure\Database\Migrations\{Catalog, DatabaseBackup, Migrator};
 use Bastion\Installation\{DbDriver, DbHost, DbName, Installer, Paths};
 use Bastion\SecurityMonitoring\Application\SecurityPosture;
@@ -227,7 +229,18 @@ final class Kernel
                 new PasswordVerifier(self::get($c, AccountRepository::class)), self::get($c, AccountRepository::class),
                 self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, AuditTrail::class),
             )),
-            BlockHtmlRenderer::class => factory(fn () => new BlockHtmlRenderer(TrustedHtmlToken::issue())),
+            TrustedHtmlToken::class => factory(fn () => TrustedHtmlToken::issue()),
+            ThreatModelSource::class => factory(fn (ContainerInterface $c) => new ThreatModelSource($paths->threatModel(), self::get($c, LoggerInterface::class))),
+            BlockHtmlRenderer::class => factory(function (ContainerInterface $c): BlockHtmlRenderer {
+                $source = self::get($c, ThreatModelSource::class);
+                $catalog = self::get($c, StringCatalog::class);
+                return new BlockHtmlRenderer(self::get($c, TrustedHtmlToken::class), static fn (string $view, string $lang): string =>
+                    (new ThreatModelViews($catalog->strings('theme', Language::fromNative($lang)), $lang))->render($view, $source->get()));
+            }),
+            ThreatController::class => factory(fn (ContainerInterface $c) => new ThreatController(
+                self::get($c, ThreatModelSource::class), self::get($c, SiteContext::class), self::get($c, StringCatalog::class),
+                self::get($c, View::class), self::get($c, PublicController::class), self::get($c, TrustedHtmlToken::class),
+            )),
             View::class => factory(function (ContainerInterface $c) use ($paths): View {
                 // До установки ключа кэша ещё нет — работаем без кэша AST.
                 $cache = fn (string $sub) => is_file($paths->cacheKey())
@@ -414,6 +427,8 @@ final class Kernel
         $router->get('/tag/{slug}', [TermController::class, 'movedTag'])->where(['slug' => Slug::class]);
         $router->get('/{lang}', [PublicController::class, 'first'])->where(['lang' => Slug::class]);
         $router->get('/{lang}/{slug}', [PublicController::class, 'show'])->where(['lang' => Slug::class, 'slug' => Slug::class]);
+        $router->get('/{lang}/threats', [ThreatController::class, 'index'])->where(['lang' => Slug::class]);
+        $router->get('/{lang}/threats/{slug}', [ThreatController::class, 'story'])->where(['lang' => Slug::class, 'slug' => Slug::class]);
         $router->get('/{lang}/category/{slug}', [TermController::class, 'category'])->where(['lang' => Slug::class, 'slug' => Slug::class]);
         $router->get('/{lang}/tag/{slug}', [TermController::class, 'tag'])->where(['lang' => Slug::class, 'slug' => Slug::class]);
         return $router;

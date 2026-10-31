@@ -11,11 +11,13 @@ namespace Bastion\Release;
  */
 #[\HybridTM\Attributes\AssetId('app-filesystem')]
 #[\HybridTM\Attributes\AbuserStory('vendored-asset-tamper')]
-#[\HybridTM\Attributes\Mitigation(cwe: 'CWE-494', description: 'Vendored fonts are pinned to an exact package version, self-hosted (no third-party requests) and listed in the SBOM with a SHA-256 over their files; bin/sbom verify detects a swapped or missing file')]
+#[\HybridTM\Attributes\AbuserStory('threat-model-export-tamper')]
+#[\HybridTM\Attributes\Mitigation(cwe: 'CWE-494', description: 'Vendored fonts are pinned to an exact package version, self-hosted and listed in the SBOM with a SHA-256 over their files; the SBOM also records the SHA-256 of build/threat-model.json; bin/sbom verify detects a swapped or missing file')]
 final class Sbom
 {
     /** Вендорные статические ресурсы (шрифты): манифест рядом с файлами, путь от корня релиза. */
     public const ASSET_MANIFESTS = ['public/assets/fonts/fonts.json'];
+    public const THREAT_MODEL = 'build/threat-model.json';
 
     /**
      * @param array<string, mixed> $lock разобранный composer.lock
@@ -74,6 +76,11 @@ final class Sbom
             $dependencies[0]['dependsOn'][] = $a['purl'];
         }
         $contentHash = is_string($lock['content-hash'] ?? null) ? $lock['content-hash'] : '';
+        $metaProps = [['name' => 'bastion:composer-content-hash', 'value' => $contentHash]];
+        if ($root !== null && is_file($root . '/' . self::THREAT_MODEL)) {
+            // экспорт модели угроз для сайта документации (ADR-0023): его подмену ловит verify
+            $metaProps[] = ['name' => 'bastion:threat-model-sha256', 'value' => (string) hash_file('sha256', $root . '/' . self::THREAT_MODEL)];
+        }
         return [
             'bomFormat' => 'CycloneDX',
             'specVersion' => '1.5',
@@ -84,7 +91,7 @@ final class Sbom
                 'tools' => ['components' => [['type' => 'application', 'name' => 'bastion-sbom', 'version' => '1']]],
                 'component' => ['type' => 'application', 'bom-ref' => 'pkg:composer/dzentota/bastion@' . $appVersion,
                     'name' => 'bastion', 'group' => 'dzentota', 'version' => $appVersion, 'purl' => 'pkg:composer/dzentota/bastion@' . $appVersion],
-                'properties' => [['name' => 'bastion:composer-content-hash', 'value' => $contentHash]],
+                'properties' => $metaProps,
             ],
             'components' => $components,
             'dependencies' => $dependencies,
@@ -131,6 +138,15 @@ final class Sbom
                 $problems[] = "{$name}: missing from vendor/";
             } elseif (!hash_equals($expected, $actual)) {
                 $problems[] = "{$name}: files differ from the release (modified vendor code)";
+            }
+        }
+        $meta = is_array($sbom['metadata'] ?? null) ? $sbom['metadata'] : [];
+        foreach (is_array($meta['properties'] ?? null) ? $meta['properties'] : [] as $p) {
+            if (is_array($p) && ($p['name'] ?? null) === 'bastion:threat-model-sha256' && is_string($p['value'] ?? null)) {
+                $file = $root !== null ? $root . '/' . self::THREAT_MODEL : null;
+                if ($file === null || !is_file($file) || !hash_equals($p['value'], (string) hash_file('sha256', $file))) {
+                    $problems[] = self::THREAT_MODEL . ': differs from the release';
+                }
             }
         }
         foreach (array_diff($installedRuntime, $listed) as $extra) {

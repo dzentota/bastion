@@ -28,6 +28,8 @@ jobs:
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
       - name: Dependency audit
         run: composer audit
+      - name: Threat-model export for the documentation site (ADR-0023)
+        run: php bin/threat-model-export
       - name: SBOM (CycloneDX, ADR-0014) — runtime dependencies only
         run: |
           composer install --no-interaction --prefer-dist --no-dev
@@ -36,4 +38,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: sbom
-          path: build/sbom.cdx.json
+          path: |
+            build/sbom.cdx.json
+            build/threat-model.json

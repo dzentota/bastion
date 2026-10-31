@@ -22,6 +22,7 @@ final class Paths
     public function auditAnchor(): string { return $this->var('audit.anchor'); }
     public function templateCache(): string { return $this->var('cache/templates'); }
     public function sqlite(): string { return $this->var('bastion.sqlite'); }
+    public function threatModel(): string { return $this->root . '/build/threat-model.json'; }
     public function translations(): string { return $this->root . '/translations'; }
     public function adminTemplates(): string { return $this->root . '/templates/admin'; }
     public function extensions(): string { return $this->root . '/extensions'; }

@@ -119,7 +119,7 @@ final class PublicController
     {
         return $this->view->theme('entry', [
             'site' => $this->site->for($entry->lang, $this->entries->translations($entry->translationGroup)),
-            'entry' => $this->summary($entry) + ['body' => $this->blocks->render($entry->blocks()), 'outline' => $this->outline($entry)] + $this->termLinks($entry),
+            'entry' => $this->summary($entry) + ['body' => $this->blocks->render($entry->blocks(), $entry->lang->toNative()), 'outline' => $this->outline($entry)] + $this->termLinks($entry),
             'tree' => $this->treeContext($entry),
             'comments_open' => $entry->type->inFeed(),
             'comments' => !$entry->type->inFeed() ? [] : array_map(static fn (Comment $c) => [
@@ -162,7 +162,7 @@ final class PublicController
         $res = $this->view->theme('entry', [
             'site' => $this->site->for($transient->lang),
             'preview' => true,
-            'entry' => $this->summary($transient) + ['body' => $this->blocks->render($transient->blocks()), 'outline' => $this->outline($transient)] + $this->termLinks($transient),
+            'entry' => $this->summary($transient) + ['body' => $this->blocks->render($transient->blocks(), $transient->lang->toNative()), 'outline' => $this->outline($transient)] + $this->termLinks($transient),
             'tree' => $this->treeContext($transient),
             'comments_open' => false,
             'comments' => [],

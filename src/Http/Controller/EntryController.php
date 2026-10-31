@@ -9,7 +9,8 @@ use Bastion\Content\Application\PreviewTokens;
 use Bastion\Content\Domain\{PreviewToken, RevisionDiff};
 use Bastion\Content\Infrastructure\RevisionRepository;
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
-use Bastion\Content\Domain\Block\{Block, BlockList, Callout, Code, Heading, Image, InvalidBlock, Paragraph, Quote, Table};
+use Bastion\Content\Domain\Block\{Block, BlockList, Callout, Code, Heading, Image, InvalidBlock, Paragraph, Quote, Table, ThreatModelEmbed};
+use Bastion\ThreatModel\Rendering\ThreatModelViews;
 use Bastion\Media\Domain\{MediaId, MediaItem};
 use Bastion\Media\Infrastructure\MediaRepository;
 use Bastion\Content\Infrastructure\EntryRepository;
@@ -28,7 +29,7 @@ final class EntryController
 {
     private const EDITOR_ROWS = 12;
     /** Первые сегменты путей, занятые маршрутами: запись с таким слагом была бы недостижима или маскировалась под систему. */
-    private const RESERVED_SLUGS = ['admin', 'category', 'tag', 'media', 'comments', 'install', 'assets', 'login', 'feed'];
+    private const RESERVED_SLUGS = ['admin', 'category', 'tag', 'media', 'comments', 'install', 'assets', 'login', 'feed', 'threats'];
 
     public function __construct(
         private readonly EntryRepository $entries,
@@ -88,6 +89,7 @@ final class EntryController
                 $b instanceof Code => ['type' => 'code', 'text' => $data['text'] ?? '', 'option' => $b->language],
                 $b instanceof Callout => ['type' => 'callout', 'text' => $data['text'] ?? '', 'option' => $b->variant],
                 $b instanceof Table => ['type' => 'table', 'text' => $b->text(), 'option' => $b->header ? 'header' : ''],
+                $b instanceof ThreatModelEmbed => ['type' => 'threatmodel', 'text' => '', 'option' => $b->view],
                 default => ['type' => $b::type(), 'text' => $data['text'] ?? ''],
             };
         }
@@ -391,10 +393,14 @@ final class EntryController
                 $blocks[] = $image;
                 continue;
             }
-            if (trim($text) === '') {
+            if (trim($text) === '' && ($row['type'] ?? '') !== 'threatmodel') {
                 continue; // пустые строки редактора игнорируются
             }
             $option = $row['option'] ?? '';
+            if (($row['type'] ?? '') === 'threatmodel') {
+                $blocks[] = ThreatModelEmbed::fromArray(['view' => in_array($option, ThreatModelViews::VIEWS, true) ? $option : 'overview']);
+                continue;
+            }
             $blocks[] = match ($row['type'] ?? '') {
                 'paragraph' => Paragraph::fromArray(['text' => $text]),
                 'quote' => Quote::fromArray(['text' => $text]),
@@ -422,6 +428,8 @@ final class EntryController
         $rows = array_map(static fn (array $r, int $i) => [
             'i' => $i, 'text' => $r['text'] ?? '',
             'is_code' => ($r['type'] ?? '') === 'code', 'is_table' => ($r['type'] ?? '') === 'table', 'is_callout' => ($r['type'] ?? '') === 'callout',
+            'is_threatmodel' => ($r['type'] ?? '') === 'threatmodel',
+            'tm_views' => array_map(static fn (string $v) => ['value' => $v, 'selected' => ($r['option'] ?? '') === $v], ThreatModelViews::VIEWS),
             'languages' => array_map(static fn (string $l) => ['value' => $l, 'selected' => ($r['option'] ?? '') === $l], Code::LANGUAGES),
             'variants' => array_map(static fn (string $v) => ['value' => $v, 'selected' => ($r['option'] ?? '') === $v], Callout::VARIANTS),
             'header' => ($r['option'] ?? '') === 'header',

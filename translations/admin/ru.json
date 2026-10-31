@@ -191,5 +191,8 @@
     "menu_add": "Добавить страницу",
     "menu_full": "Меню заполнено (10 пунктов).",
     "skip_to_content": "К содержимому",
-    "admin_nav": "Разделы админки"
+    "admin_nav": "Разделы админки",
+    "block_threatmodel": "Модель угроз",
+    "block_option_threatmodel": "Вид модели угроз",
+    "blocks_hint_tm": "Модель угроз: в «Параметре» выберите overview, matrix, findings или dfd; текст не нужен."
 }

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\Content\Rendering;
 
-use Bastion\Content\Domain\Block\{Block, BlockList, Callout, Code, Heading, Image, Paragraph, Quote, Table};
+use Bastion\Content\Domain\Block\{Block, BlockList, Callout, Code, Heading, Image, Paragraph, Quote, Table, ThreatModelEmbed};
 use Bastion\Theming\Dsl\{SafeHtml, TrustedHtmlToken};
 use HybridTM\Attributes\{AbuserStory, AssetId, Mitigation};
 
@@ -16,12 +16,14 @@ use HybridTM\Attributes\{AbuserStory, AssetId, Mitigation};
 #[AssetId('bastion-app')]
 final class BlockHtmlRenderer
 {
-    public function __construct(private readonly TrustedHtmlToken $token)
+    /** @param (\Closure(string $view, string $lang): string)|null $threatModel HTML представления модели угроз (ThreatModelViews) */
+    public function __construct(private readonly TrustedHtmlToken $token, private readonly ?\Closure $threatModel = null)
     {
     }
 
-    public function render(BlockList $blocks): SafeHtml
+    public function render(BlockList $blocks, string $lang = 'en'): SafeHtml
     {
+        $this->lang = preg_match('/^[a-z]{2}$/', $lang) ? $lang : 'en';
         $html = '';
         $n = 0;
         foreach ($blocks as $block) {
@@ -62,9 +64,12 @@ final class BlockHtmlRenderer
             $block instanceof Code => sprintf('<pre class="code"><code class="language-%s">%s</code></pre>', $block->language, $this->esc($block->text->toNative())),
             $block instanceof Callout => sprintf('<aside class="callout callout-%s" role="note"><p>%s</p></aside>', $block->variant, $this->text($block->text->toNative())),
             $block instanceof Table => $this->table($block),
+            $block instanceof ThreatModelEmbed => '<div class="tm tm-' . $block->view . '">' . ($this->threatModel !== null ? ($this->threatModel)($block->view, $this->lang) : '') . '</div>',
             default => throw new \LogicException('Unrenderable block ' . $block::type()),
         };
     }
+
+    private string $lang = 'en';
 
     private function table(Table $t): string
     {

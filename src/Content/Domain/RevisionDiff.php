@@ -57,7 +57,7 @@ final class RevisionDiff
             $field = static fn (string $k): string => is_scalar($data[$k] ?? null) ? (string) $data[$k] : '';
             $text = $block::type() === 'image' ? '[' . $field('media') . '] ' . $field('alt') : $field('text');
             // параметр блока — часть метки: смена языка кода или типа врезки тоже видна в сравнении
-            $option = $field('language') . $field('variant') . (($data['header'] ?? false) === true ? 'header' : '');
+            $option = $field('language') . $field('variant') . $field('view') . (($data['header'] ?? false) === true ? 'header' : '');
             $label = $block::type() . ($option !== '' ? '[' . $option . ']' : '');
             foreach (explode("\n", $text) as $line) {
                 $lines[] = $label . ': ' . $line;

@@ -9,9 +9,21 @@ use Bastion\Tests\Support\{Database, FrozenClock};
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
-/** Abuser stories: credential-stuffing, appsensor-lockout-abuse. */
+/** Abuser stories: credential-stuffing, appsensor-lockout-abuse, appsensor-evasion. */
 final class AppSensorLockoutTest extends TestCase
 {
+    public function testGuessingFromManyAddressesStillLocksTheAccount(): void
+    {
+        $sensor = new DbAppSensor(Database::memory(), new FrozenClock(), new NullLogger());
+        $acct = ActorKey::account('owner');
+        // по одной попытке с пяти адресов: ни один IP не превышает порог, учётная запись — да
+        foreach (['198.51.100.1', '198.51.100.2', '203.0.113.3', '203.0.113.4', '192.0.2.5'] as $ip) {
+            $sensor->event(DetectionPoint::AE2, $acct, ActorKey::ip($ip));
+            self::assertFalse($sensor->isActive(ResponseAction::TemporaryLock, ActorKey::ip($ip)));
+        }
+        self::assertTrue($sensor->isActive(ResponseAction::TemporaryLock, $acct));
+    }
+
     public function testFailedPasswordsLockAccountTemporarily(): void
     {
         $clock = new FrozenClock();
