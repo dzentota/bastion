@@ -13,6 +13,8 @@ use Bastion\Http\Middleware\RequireStaff;
 use Bastion\Http\View;
 use Bastion\IdentityAccess\Domain\{Account, Capability};
 use Bastion\SecurityMonitoring\Domain\{ActorKey, AppSensor, DetectionPoint};
+use Bastion\Taxonomy\Domain\{TermKind, TermList};
+use Bastion\Taxonomy\Infrastructure\TermRepository;
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
 use HybridTM\Attributes\{AbuserStory, AssetId, Mitigation};
 
@@ -29,6 +31,7 @@ final class EntryController
         private readonly \Psr\Clock\ClockInterface $clock,
         private readonly MediaRepository $media,
         private readonly AuditTrail $audit,
+        private readonly TermRepository $terms,
     ) {
     }
 
@@ -44,7 +47,7 @@ final class EntryController
 
     public function create(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->editor($request, null, ['title' => '', 'slug' => ''], [], []);
+        return $this->editor($request, null, ['title' => '', 'slug' => '', 'categories' => '', 'tags' => ''], [], []);
     }
 
     public function edit(ServerRequestInterface $request, EntryId $id): ResponseInterface
@@ -60,7 +63,11 @@ final class EntryController
                 ? ['type' => 'image', 'media' => $data['media'], 'text' => $data['alt']]
                 : ['type' => $b::type()] + $data;
         }
-        return $this->editor($request, $entry, ['title' => $entry->title(), 'slug' => $entry->slug()], $rows, []);
+        return $this->editor($request, $entry, [
+            'title' => $entry->title(), 'slug' => $entry->slug(),
+            'categories' => $this->terms->forEntry($entry->id, TermKind::Category)->toInput(),
+            'tags' => $this->terms->forEntry($entry->id, TermKind::Tag)->toInput(),
+        ], $rows, []);
     }
 
     public function store(ServerRequestInterface $request): ResponseInterface
@@ -98,6 +105,12 @@ final class EntryController
         $rawTitle = Input::string($request, 'title', 1000);
         $rawSlug = Input::string($request, 'slug', 200);
         $rows = Input::rows($request, 'blocks', BlockList::MAX_BLOCKS);
+        $rawCategories = Input::string($request, 'categories', 600);
+        $rawTags = Input::string($request, 'tags', 1600);
+        $categories = TermList::parse(TermKind::Category, $rawCategories);
+        $tags = TermList::parse(TermKind::Tag, $rawTags);
+        $categories ?? $errors[] = 'Categories: up to 5 comma-separated slugs.';
+        $tags ?? $errors[] = 'Tags: up to 15 comma-separated slugs.';
         Title::tryParse($rawTitle, $title) || $errors[] = 'Title: 1–200 characters, single line.';
         Slug::tryParse($rawSlug, $slug) || $errors[] = 'Slug: lowercase letters, digits and dashes.';
         if ($slug && $this->entries->slugTaken($slug, $entry?->id)) {
@@ -110,9 +123,9 @@ final class EntryController
             $errors[] = 'One of the blocks is invalid.';
         }
         $this->detectXss($request, $rawTitle, $rawSlug, ...array_column($rows, 'text'));
-        if ($errors !== []) {
+        if ($errors !== [] || $categories === null || $tags === null) {
             $this->sensor->event(DetectionPoint::IE2, ActorKey::ip($this->ip($request)));
-            return $this->editor($request, $entry, ['title' => $rawTitle, 'slug' => $rawSlug], $rows, $errors, 422);
+            return $this->editor($request, $entry, ['title' => $rawTitle, 'slug' => $rawSlug, 'categories' => $rawCategories, 'tags' => $rawTags], $rows, $errors, 422);
         }
 
         $action = $entry === null ? AuditAction::EntryCreated : AuditAction::EntryUpdated;
@@ -122,6 +135,10 @@ final class EntryController
             $entry->revise($title, $slug, $blocks);
         }
         $this->entries->save($entry);
+        if (!$this->terms->assign($entry->id, $categories) || !$this->terms->assign($entry->id, $tags)) {
+            return $this->editor($request, $entry, ['title' => $rawTitle, 'slug' => $rawSlug, 'categories' => $rawCategories, 'tags' => $rawTags],
+                $rows, ['The site has reached the limit of distinct categories or tags; reuse existing ones.'], 422);
+        }
         $this->audit->record($action, $this->account($request)->getId(), $entry->id->toNative(), $this->ip($request));
         return $this->view->redirect('/admin/entries/' . $entry->id->toNative() . '/edit');
     }

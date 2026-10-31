@@ -7,6 +7,5 @@ declare(strict_types=1);
  * и тестом атаки. Гейт падает и в обратную сторону — если история из бэклога уже покрыта.
  */
 return [
-    'term-enumeration-dos',  // Taxonomy
     'update-hijack',         // Updates (Chronicle)
 ];

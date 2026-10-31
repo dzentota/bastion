@@ -10,6 +10,8 @@ use dzentota\Router\Middleware\HoneypotMiddleware;
 use Bastion\Content\Infrastructure\EntryRepository;
 use Bastion\Content\Rendering\BlockHtmlRenderer;
 use Bastion\Http\View;
+use Bastion\Taxonomy\Domain\{Term, TermKind};
+use Bastion\Taxonomy\Infrastructure\TermRepository;
 use Psr\Http\Message\ResponseInterface;
 
 final class PublicController
@@ -20,6 +22,7 @@ final class PublicController
         private readonly View $view,
         private readonly CommentRepository $comments,
         private readonly HoneypotMiddleware $honeypot,
+        private readonly TermRepository $terms,
     ) {
     }
 
@@ -45,7 +48,7 @@ final class PublicController
     {
         return $this->view->theme('entry', [
             'site' => ['name' => 'Bastion'],
-            'entry' => $this->summary($entry) + ['body' => $this->blocks->render($entry->blocks())],
+            'entry' => $this->summary($entry) + ['body' => $this->blocks->render($entry->blocks())] + $this->termLinks($entry),
             'comments' => array_map(static fn (Comment $c) => [
                 'author' => $c->author, 'lines' => $c->body->lines(), 'date' => $c->createdAt->format('Y-m-d'),
             ], $this->comments->approvedFor($entry->id)),
@@ -54,6 +57,15 @@ final class PublicController
                 'timestamp' => $this->honeypot->generateTimestamp(),
             ],
         ], $status);
+    }
+
+    /** @return array{categories: list<array{name: string, url: string}>, tags: list<array{name: string, url: string}>} */
+    private function termLinks(Entry $entry): array
+    {
+        $links = fn (TermKind $k) => array_map(
+            static fn (Term $t) => ['name' => $t->slug->toNative(), 'url' => $t->url()], $this->terms->forEntry($entry->id, $k)->terms,
+        );
+        return ['categories' => $links(TermKind::Category), 'tags' => $links(TermKind::Tag)];
     }
 
     /** @return array<string, mixed> */

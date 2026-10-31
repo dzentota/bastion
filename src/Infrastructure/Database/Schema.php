@@ -85,6 +85,19 @@ final class Schema
                 fingerprint VARCHAR(32) NOT NULL,
                 created_at INTEGER NOT NULL
             ){$suffix}",
+            "CREATE TABLE IF NOT EXISTS ?_terms (
+                kind VARCHAR(16) NOT NULL,
+                slug VARCHAR(96) NOT NULL,
+                PRIMARY KEY (kind, slug)
+            ){$suffix}",
+            "CREATE TABLE IF NOT EXISTS ?_entry_terms (
+                entry_id VARCHAR(36) NOT NULL,
+                kind VARCHAR(16) NOT NULL,
+                slug VARCHAR(96) NOT NULL,
+                PRIMARY KEY (entry_id, kind, slug)
+            ){$suffix}",
+            // листинг термина ищет по (kind, slug) — без полного сканирования
+            "CREATE INDEX " . ($driver === 'mysql' ? '' : 'IF NOT EXISTS ') . "?_entry_terms_by_term ON ?_entry_terms (kind, slug, entry_id)",
             "CREATE TABLE IF NOT EXISTS ?_audit (
                 seq INTEGER PRIMARY KEY,
                 at INTEGER NOT NULL,

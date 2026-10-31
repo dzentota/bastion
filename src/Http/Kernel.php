@@ -17,8 +17,9 @@ use Bastion\IdentityAccess\Infrastructure\ResetTokenRepository;
 use Bastion\Mail\{Mailer, SmtpConfig, SmtpMailer, UnconfiguredMailer};
 use Bastion\Shared\Application\AfterResponse;
 use Bastion\Extensions\Application\{ExtensionInstaller, ExtensionLoader, HelperCollector, PackageReader, StaticGate};
+use Bastion\Taxonomy\Infrastructure\TermRepository;
 use Bastion\Extensions\Infrastructure\{ExtensionRegistry, PublishedContentReader};
-use Bastion\Http\Controller\{AuditController, AuthController, ExtensionController, PasswordResetController, CommentController, EntryController, InstallController, MediaController, PublicController};
+use Bastion\Http\Controller\{AuditController, AuthController, ExtensionController, PasswordResetController, CommentController, EntryController, TermController, InstallController, MediaController, PublicController};
 use dzentota\Router\Middleware\HoneypotMiddleware;
 use Bastion\Media\Application\{MediaSanitizer, UploadMedia, UploadPolicy};
 use Bastion\Media\Domain\{MediaId, MediaStorage};
@@ -206,7 +207,7 @@ final class Kernel
 
             PublicController::class => factory(fn (ContainerInterface $c) => new PublicController(
                 self::get($c, EntryRepository::class), self::get($c, BlockHtmlRenderer::class), self::get($c, View::class),
-                self::get($c, CommentRepository::class), self::get($c, HoneypotMiddleware::class),
+                self::get($c, CommentRepository::class), self::get($c, HoneypotMiddleware::class), self::get($c, TermRepository::class),
             )),
             CommentRepository::class => factory(fn (ContainerInterface $c) => new CommentRepository(self::get($c, Db::class))),
             // Анонимная форма: подписанная метка времени + поле-ловушка (dzentota/router).
@@ -233,7 +234,11 @@ final class Kernel
             )),
             InstallController::class => factory(fn (ContainerInterface $c) => new InstallController(self::get($c, Installer::class), self::get($c, View::class), self::get($c, AppSensor::class))),
             AuthController::class => factory(fn (ContainerInterface $c) => new AuthController(self::get($c, TwoStepLogin::class), self::get($c, View::class))),
-            EntryController::class => factory(fn (ContainerInterface $c) => new EntryController(self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, MediaRepository::class), self::get($c, AuditTrail::class))),
+            EntryController::class => factory(fn (ContainerInterface $c) => new EntryController(self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, MediaRepository::class), self::get($c, AuditTrail::class), self::get($c, TermRepository::class))),
+            TermRepository::class => factory(fn (ContainerInterface $c) => new TermRepository(self::get($c, Db::class))),
+            TermController::class => factory(fn (ContainerInterface $c) => new TermController(
+                self::get($c, TermRepository::class), self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class),
+            )),
 
             Router::class => factory(fn (ContainerInterface $c) => self::router($c, $paths, $https, $devCookies)),
         ]);
@@ -305,6 +310,8 @@ final class Kernel
             $router->post("/admin/comments/{id}/{$action}", [CommentController::class, $action])->where(['id' => CommentId::class])->middleware($staff);
         }
 
+        $router->get('/category/{slug}', [TermController::class, 'category'])->where(['slug' => Slug::class]);
+        $router->get('/tag/{slug}', [TermController::class, 'tag'])->where(['slug' => Slug::class]);
         $router->get('/{slug}', [PublicController::class, 'show'])->where(['slug' => Slug::class]);
         return $router;
     }

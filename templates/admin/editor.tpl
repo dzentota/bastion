@@ -6,6 +6,9 @@
   <input type="hidden" name="_token" value="{{ csrf | attr }}">
   <label>Title <input name="title" value="{{ values.title | attr }}" required maxlength="200"></label>
   <label>Slug (address) <input name="slug" value="{{ values.slug | attr }}" required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxlength="96"></label>
+  <label>Categories <input name="categories" value="{{ values.categories | attr }}" maxlength="600" placeholder="news, security"></label>
+  <label>Tags <input name="tags" value="{{ values.tags | attr }}" maxlength="1600" placeholder="php, release"></label>
+  <p class="hint">Comma-separated slugs (lowercase letters, digits, dashes). Up to 5 categories and 15 tags.</p>
   <fieldset>
     <legend>Content blocks</legend>
     {% each rows as row %}

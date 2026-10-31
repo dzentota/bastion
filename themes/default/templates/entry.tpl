@@ -3,6 +3,8 @@
   <h1>{{ entry.title }}</h1>
   <time>{{ entry.date }}</time>
   {{ entry.body }}
+  {% if entry.categories %}<p class="terms">Categories: {% each entry.categories as t %}<a href="{{ t.url | url }}">{{ t.name }}</a> {% endeach %}</p>{% endif %}
+  {% if entry.tags %}<p class="terms">Tags: {% each entry.tags as t %}<a href="{{ t.url | url }}">#{{ t.name }}</a> {% endeach %}</p>{% endif %}
 </article>
 <section class="comments" id="comments">
   <h2>Comments</h2>
