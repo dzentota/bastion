@@ -155,3 +155,4 @@ header.site .search + .languages { margin-left: 0; }
 .search-results p { margin: var(--space-1) 0 0; color: var(--ink-soft); }
 mark { background: var(--brass-wash); color: var(--ink); padding: 0 0.1em; }
 @media (max-width: 52rem) { header.site .search { margin-left: 0; order: 3; flex-basis: 100%; } header.site .search input { width: 100%; } }
+footer.site { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-3); }

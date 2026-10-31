@@ -10,8 +10,17 @@ use HybridTM\Attributes\{AbuserStory, AssetId, Mitigation};
 #[AssetId('bastion-app')]
 final class SiteContext
 {
-    public function __construct(public readonly SiteLanguages $languages)
+    public function __construct(public readonly SiteLanguages $languages, private readonly ?string $issuesUrl = null)
     {
+    }
+
+    /** site.issues_url из config.json: только https, без учётных данных и фрагментов. */
+    public static function issuesUrl(mixed $raw): ?string
+    {
+        if (!is_string($raw) || strlen($raw) > 300 || !preg_match('~^https://[A-Za-z0-9.-]+(?::\d+)?(?:/[A-Za-z0-9._/%-]*)?$~', $raw)) {
+            return null;
+        }
+        return $raw;
     }
 
     /**
@@ -39,6 +48,7 @@ final class SiteContext
             'lang' => $lang->toNative(),
             'home' => '/' . $lang->toNative(),
             'languages' => count($switch) > 1 ? $switch : [],
+            'issues' => $this->issuesUrl,
             'alternates' => count($byLang) > 1 ? array_map(static fn (string $c, string $u) => ['lang' => $c, 'url' => $u], array_keys($byLang), $byLang) : [],
         ];
     }

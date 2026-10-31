@@ -297,7 +297,10 @@ final class Kernel
             PreferencesController::class => factory(fn (ContainerInterface $c) => new PreferencesController(
                 self::get($c, AccountRepository::class), self::get($c, StringCatalog::class), self::get($c, View::class),
             )),
-            SiteContext::class => factory(fn (ContainerInterface $c) => new SiteContext(self::get($c, SiteLanguages::class))),
+            SiteContext::class => factory(function (ContainerInterface $c) use ($paths): SiteContext {
+                $issues = $paths->isInstalled() ? ConfigLoaderFactory::createFromJsonAndEnv($paths->config(), 'BASTION_', false)->getRaw('site.issues_url', null) : null;
+                return new SiteContext(self::get($c, SiteLanguages::class), SiteContext::issuesUrl($issues));
+            }),
             CommentRepository::class => factory(fn (ContainerInterface $c) => new CommentRepository(self::get($c, Db::class))),
             // Анонимная форма: подписанная метка времени + поле-ловушка (dzentota/router).
             // Лимит частоты считает PostComment по хэшу IP в БД, поэтому резолвер IP отключает

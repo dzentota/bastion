@@ -82,5 +82,6 @@
     "search_placeholder": "Search",
     "search_button": "Search",
     "search_nothing": "Nothing found. Try fewer or shorter words.",
-    "search_too_long": "The query is too long; use up to 200 characters."
+    "search_too_long": "The query is too long; use up to 200 characters.",
+    "report_problem": "Report a problem or a vulnerability"
 }

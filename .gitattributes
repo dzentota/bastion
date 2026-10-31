@@ -1,0 +1,8 @@
+# Не входит в релизный архив (bin/release использует git archive)
+/tests export-ignore
+/.github export-ignore
+/.claude export-ignore
+/phpunit.xml export-ignore
+/phpstan.neon export-ignore
+/phpstan-baseline.neon export-ignore
+/.gitattributes export-ignore

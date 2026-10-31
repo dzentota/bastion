@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Сборка релиза (ADR-0025): bin/release VERSION
+#   1. проверки: гейт модели угроз и тесты (пропуск: --skip-checks, только для отладки сборки)
+#   2. экспорт модели угроз для сайта документации (нужны dev-зависимости — до шага 3)
+#   3. чистое дерево из git archive HEAD, vendor/ без dev-пакетов
+#   4. SBOM внутри релиза и его проверка
+#   5. воспроизводимый zip (время файлов = время коммита) и SHA256SUMS
+set -euo pipefail
+
+VERSION="${1:-}"
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9.]+)?$ ]] || { echo "Usage: bin/release X.Y.Z [--skip-checks]" >&2; exit 1; }
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+    echo "Working tree has uncommitted changes; commit them first." >&2
+    exit 1
+fi
+if [[ "${2:-}" != "--skip-checks" ]]; then
+    php bin/threat-gate > /dev/null
+    vendor/bin/phpunit --no-progress
+fi
+
+EPOCH="$(git log -1 --format=%ct)"
+OUT="$ROOT/build/release"
+DIR="$OUT/bastion-$VERSION"
+rm -rf "$DIR" "$OUT/bastion-$VERSION.zip"
+mkdir -p "$DIR"
+
+php bin/threat-model-export --out="$DIR.threat-model.json"
+git archive --format=tar HEAD | tar -x -C "$DIR"
+mkdir -p "$DIR/build"
+mv "$DIR.threat-model.json" "$DIR/build/threat-model.json"
+(cd "$DIR" && composer install --no-dev --no-interaction --prefer-dist --classmap-authoritative --quiet)
+(cd "$DIR" && SOURCE_DATE_EPOCH="$EPOCH" php bin/sbom generate --version="$VERSION" > /dev/null && php bin/sbom verify)
+rm -rf "$DIR/var"
+mkdir -p "$DIR/var"
+
+# воспроизводимость: одинаковое время файлов и порядок в архиве
+find "$DIR" -exec touch -h -d "@$EPOCH" {} + 2>/dev/null || find "$DIR" -exec touch -h -t "$(date -r "$EPOCH" +%Y%m%d%H%M.%S)" {} +
+(cd "$OUT" && find "bastion-$VERSION" -print | LC_ALL=C sort | zip -X -q -@ "bastion-$VERSION.zip")
+(cd "$OUT" && shasum -a 256 "bastion-$VERSION.zip" > "bastion-$VERSION.zip.sha256")
+echo "Built $OUT/bastion-$VERSION.zip"
+cat "$OUT/bastion-$VERSION.zip.sha256"
