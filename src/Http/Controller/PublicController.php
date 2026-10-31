@@ -5,11 +5,11 @@ namespace Bastion\Http\Controller;
 
 use Bastion\Comments\Domain\Comment;
 use Bastion\Comments\Infrastructure\CommentRepository;
-use Bastion\Content\Domain\{Entry, Slug};
+use Bastion\Content\Domain\{Entry, Language, Slug};
 use dzentota\Router\Middleware\HoneypotMiddleware;
 use Bastion\Content\Infrastructure\EntryRepository;
 use Bastion\Content\Rendering\BlockHtmlRenderer;
-use Bastion\Http\View;
+use Bastion\Http\{SiteContext, View};
 use Bastion\Taxonomy\Domain\{Term, TermKind};
 use Bastion\Taxonomy\Infrastructure\TermRepository;
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
@@ -23,22 +23,39 @@ final class PublicController
         private readonly CommentRepository $comments,
         private readonly HoneypotMiddleware $honeypot,
         private readonly TermRepository $terms,
+        private readonly SiteContext $site,
     ) {
     }
 
-    public function home(): ResponseInterface
+    /** / → главная языка по умолчанию. */
+    public function root(): ResponseInterface
     {
-        return $this->view->theme('home', [
-            'site' => ['name' => 'Bastion'],
-            'posts' => array_map(fn (Entry $e) => $this->summary($e), $this->entries->latest(20, true)),
-        ]);
+        return $this->view->redirect('/' . $this->site->languages->default->toNative());
     }
 
-    public function show(ServerRequestInterface $request, Slug $slug): ResponseInterface
+    /**
+     * Первый сегмент пути: язык сайта (главная) или slug старого адреса /{slug} → 301.
+     * Один маршрут, потому что у дерева маршрутов один параметр на уровень.
+     */
+    public function first(Slug $lang): ResponseInterface
     {
-        $entry = $this->entries->findPublishedBySlug($slug);
+        $language = $this->site->languages->resolve($lang->toNative());
+        if ($language !== null) {
+            return $this->view->theme('home', [
+                'site' => $this->site->for($language),
+                'posts' => array_map(fn (Entry $e) => $this->summary($e), $this->entries->latest(20, true, null, $language)),
+            ]);
+        }
+        $moved = $this->entries->findPublishedBySlugAnyLanguage($lang, $this->site->languages->default);
+        return $moved !== null ? $this->view->moved($moved->path()) : $this->notFound();
+    }
+
+    public function show(ServerRequestInterface $request, Slug $lang, Slug $slug): ResponseInterface
+    {
+        $language = $this->site->languages->resolve($lang->toNative());
+        $entry = $language !== null ? $this->entries->findPublishedBySlug($language, $slug) : null;
         if ($entry === null) {
-            return $this->view->theme('not-found', ['site' => ['name' => 'Bastion']], 404);
+            return $this->notFound();
         }
         // только флаг: текст уведомления задан шаблоном
         return $this->render($entry, ($request->getQueryParams()['comment'] ?? null) === 'sent' ? ['sent' => true] : [], 200);
@@ -48,7 +65,7 @@ final class PublicController
     public function render(Entry $entry, array $form, int $status): ResponseInterface
     {
         return $this->view->theme('entry', [
-            'site' => ['name' => 'Bastion'],
+            'site' => $this->site->for($entry->lang, $this->entries->translations($entry->translationGroup)),
             'entry' => $this->summary($entry) + ['body' => $this->blocks->render($entry->blocks())] + $this->termLinks($entry),
             'comments_open' => $entry->type->inFeed(),
             'comments' => !$entry->type->inFeed() ? [] : array_map(static fn (Comment $c) => [
@@ -65,7 +82,7 @@ final class PublicController
     private function termLinks(Entry $entry): array
     {
         $links = fn (TermKind $k) => array_map(
-            static fn (Term $t) => ['name' => $t->slug->toNative(), 'url' => $t->url()], $this->terms->forEntry($entry->id, $k)->terms,
+            static fn (Term $t) => ['name' => $t->slug->toNative(), 'url' => $t->url($entry->lang)], $this->terms->forEntry($entry->id, $k)->terms,
         );
         return ['categories' => $links(TermKind::Category), 'tags' => $links(TermKind::Tag)];
     }
@@ -75,8 +92,13 @@ final class PublicController
     {
         return [
             'title' => $e->title(),
-            'url' => '/' . $e->slug()->toNative(),
+            'url' => $e->path(),
             'date' => $e->publishedAt()?->format('Y-m-d'),
         ];
+    }
+
+    public function notFound(): ResponseInterface
+    {
+        return $this->view->theme('not-found', ['site' => $this->site->default()], 404);
     }
 }

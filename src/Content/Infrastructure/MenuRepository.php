@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\Content\Infrastructure;
 
-use Bastion\Content\Domain\{EntryId, EntryStatus, EntryType, MenuPosition};
+use Bastion\Content\Domain\{EntryId, EntryStatus, EntryType, Language, MenuPosition};
 use Bastion\Infrastructure\Database\Row;
 use SecureDb\Db;
 
@@ -32,17 +32,17 @@ final class MenuRepository
         return is_numeric($p) && MenuPosition::tryParse((string) (int) $p, $pos) ? $pos : null;
     }
 
-    /** @return list<array{title: string, url: string}> */
-    public function items(): array
+    /** @return list<array{title: string, url: string}> меню языка: у каждого перевода своё место */
+    public function items(Language $lang): array
     {
         $rows = $this->db->select(
             'SELECT e.title, e.slug FROM ?_menu m JOIN ?_entries e ON e.id = m.entry_id
-             WHERE e.status = ? AND e.type = ? ORDER BY m.position, e.title LIMIT ?',
-            EntryStatus::Published->value, EntryType::Page->value, self::MAX_ITEMS,
+             WHERE e.status = ? AND e.type = ? AND e.lang = ? ORDER BY m.position, e.title LIMIT ?',
+            EntryStatus::Published->value, EntryType::Page->value, $lang->toNative(), self::MAX_ITEMS,
         );
-        return array_values(array_map(static function (mixed $raw): array {
+        return array_values(array_map(static function (mixed $raw) use ($lang): array {
             $r = Row::of($raw);
-            return ['title' => $r->str('title'), 'url' => '/' . $r->str('slug')];
+            return ['title' => $r->str('title'), 'url' => '/' . $lang->toNative() . '/' . $r->str('slug')];
         }, $rows));
     }
 }

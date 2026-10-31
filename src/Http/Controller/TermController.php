@@ -3,9 +3,9 @@ declare(strict_types=1);
 
 namespace Bastion\Http\Controller;
 
-use Bastion\Content\Domain\{Entry, EntryId, Slug};
+use Bastion\Content\Domain\{Entry, EntryId, Language, Slug};
 use Bastion\Content\Infrastructure\EntryRepository;
-use Bastion\Http\View;
+use Bastion\Http\{SiteContext, View};
 use Bastion\SecurityMonitoring\Domain\{ActorKey, AppSensor, DetectionPoint};
 use Bastion\Taxonomy\Domain\{PageNumber, Term, TermKind};
 use Bastion\Taxonomy\Infrastructure\TermRepository;
@@ -19,21 +19,37 @@ final class TermController
         private readonly EntryRepository $entries,
         private readonly View $view,
         private readonly AppSensor $sensor,
+        private readonly SiteContext $site,
     ) {
     }
 
-    public function category(ServerRequestInterface $request, Slug $slug): ResponseInterface
+    public function category(ServerRequestInterface $request, Slug $lang, Slug $slug): ResponseInterface
     {
-        return $this->listing($request, new Term(TermKind::Category, $slug));
+        return $this->listing($request, $lang, new Term(TermKind::Category, $slug));
     }
 
-    public function tag(ServerRequestInterface $request, Slug $slug): ResponseInterface
+    public function tag(ServerRequestInterface $request, Slug $lang, Slug $slug): ResponseInterface
     {
-        return $this->listing($request, new Term(TermKind::Tag, $slug));
+        return $this->listing($request, $lang, new Term(TermKind::Tag, $slug));
     }
 
-    private function listing(ServerRequestInterface $request, Term $term): ResponseInterface
+    /** Старые адреса /category/{slug} и /tag/{slug} → язык по умолчанию. */
+    public function movedCategory(Slug $slug): ResponseInterface
     {
+        return $this->view->moved((new Term(TermKind::Category, $slug))->url($this->site->languages->default));
+    }
+
+    public function movedTag(Slug $slug): ResponseInterface
+    {
+        return $this->view->moved((new Term(TermKind::Tag, $slug))->url($this->site->languages->default));
+    }
+
+    private function listing(ServerRequestInterface $request, Slug $lang, Term $term): ResponseInterface
+    {
+        $language = $this->site->languages->resolve($lang->toNative());
+        if ($language === null) {
+            return $this->notFound();
+        }
         $query = $request->getQueryParams();
         $raw = $query['page'] ?? '1';
         if (!PageNumber::tryParse($raw, $page)) {
@@ -44,13 +60,13 @@ final class TermController
         if (!$this->terms->exists($term->kind, $term->slug)) {
             return $this->notFound();
         }
-        $ids = $this->terms->publishedEntryIds($term, $page);
+        $ids = $this->terms->publishedEntryIds($term, $language, $page);
         $more = count($ids) > TermRepository::PAGE_SIZE;
         $posts = [];
         foreach (array_slice($ids, 0, TermRepository::PAGE_SIZE) as $id) {
             $e = $this->entries->find(EntryId::fromNative($id));
             if ($e !== null && $e->isPublished()) {
-                $posts[] = ['title' => $e->title(), 'url' => '/' . $e->slug()->toNative(), 'date' => $e->publishedAt()?->format('Y-m-d')];
+                $posts[] = ['title' => $e->title(), 'url' => $e->path(), 'date' => $e->publishedAt()?->format('Y-m-d')];
             }
         }
         if ($posts === [] && $page->toInt() > 1) {
@@ -58,16 +74,16 @@ final class TermController
         }
         $n = $page->toInt();
         return $this->view->theme('term', [
-            'site' => ['name' => 'Bastion'],
+            'site' => $this->site->for($language),
             'term' => ['kind' => $term->kind === TermKind::Category ? 'Category' : 'Tag', 'name' => $term->slug],
             'posts' => $posts,
-            'prev' => $n > 1 ? $term->url() . ($n > 2 ? '?page=' . ($n - 1) : '') : null,
-            'next' => $more && $n < PageNumber::MAX ? $term->url() . '?page=' . ($n + 1) : null,
+            'prev' => $n > 1 ? $term->url($language) . ($n > 2 ? '?page=' . ($n - 1) : '') : null,
+            'next' => $more && $n < PageNumber::MAX ? $term->url($language) . '?page=' . ($n + 1) : null,
         ]);
     }
 
     private function notFound(): ResponseInterface
     {
-        return $this->view->theme('not-found', ['site' => ['name' => 'Bastion']], 404);
+        return $this->view->theme('not-found', ['site' => $this->site->default()], 404);
     }
 }

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\Http;
 
-use Bastion\Content\Domain\{EntryId, Slug};
+use Bastion\Content\Domain\{EntryId, Language, SiteLanguages, Slug};
 use Bastion\Content\Infrastructure\{EntryRepository, MenuRepository};
 use Bastion\Content\Rendering\BlockHtmlRenderer;
 use Bastion\Audit\Domain\AuditTrail;
@@ -235,11 +235,12 @@ final class Kernel
                     new Renderer(new DirectoryTemplateSource($paths->adminTemplates()), $cache('admin')),
                     new Renderer(new DirectoryTemplateSource($paths->theme('default')), $cache('theme'), self::get($c, HelperCollector::class)->all()),
                     self::get($c, ResponseFactoryInterface::class),
-                    $paths->isInstalled() ? static fn (): array => self::get($c, MenuRepository::class)->items() : null,
+                    $paths->isInstalled() ? static fn (Language $lang): array => self::get($c, MenuRepository::class)->items($lang) : null,
                 );
             }),
             Migrator::class => factory(fn (ContainerInterface $c) => new Migrator(
-                self::get($c, Db::class), self::driver(self::get($c, Db::class)), $paths->migrationLock(), Catalog::all(),
+                self::get($c, Db::class), self::driver(self::get($c, Db::class)), $paths->migrationLock(),
+                Catalog::all(self::get($c, SiteLanguages::class)->default->toNative()),
             )),
             DatabaseBackup::class => factory(fn (ContainerInterface $c) => new DatabaseBackup(
                 self::get($c, Db::class), self::driver(self::get($c, Db::class)), $paths->backups(),
@@ -254,7 +255,16 @@ final class Kernel
             PublicController::class => factory(fn (ContainerInterface $c) => new PublicController(
                 self::get($c, EntryRepository::class), self::get($c, BlockHtmlRenderer::class), self::get($c, View::class),
                 self::get($c, CommentRepository::class), self::get($c, HoneypotMiddleware::class), self::get($c, TermRepository::class),
+                self::get($c, SiteContext::class),
             )),
+            SiteLanguages::class => factory(function () use ($paths): SiteLanguages {
+                if (!$paths->isInstalled()) {
+                    return SiteLanguages::fromConfig(null, null);
+                }
+                $cfg = ConfigLoaderFactory::createFromJsonAndEnv($paths->config(), 'BASTION_', false);
+                return SiteLanguages::fromConfig($cfg->getRaw('site.languages', null), $cfg->getRaw('site.default_language', null));
+            }),
+            SiteContext::class => factory(fn (ContainerInterface $c) => new SiteContext(self::get($c, SiteLanguages::class))),
             CommentRepository::class => factory(fn (ContainerInterface $c) => new CommentRepository(self::get($c, Db::class))),
             // Анонимная форма: подписанная метка времени + поле-ловушка (dzentota/router).
             // Лимит частоты считает PostComment по хэшу IP в БД, поэтому резолвер IP отключает
@@ -280,10 +290,11 @@ final class Kernel
             )),
             InstallController::class => factory(fn (ContainerInterface $c) => new InstallController(self::get($c, Installer::class), self::get($c, View::class), self::get($c, AppSensor::class))),
             AuthController::class => factory(fn (ContainerInterface $c) => new AuthController(self::get($c, TwoStepLogin::class), self::get($c, View::class))),
-            EntryController::class => factory(fn (ContainerInterface $c) => new EntryController(self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, MediaRepository::class), self::get($c, AuditTrail::class), self::get($c, TermRepository::class), self::get($c, SecurityPosture::class), self::get($c, MenuRepository::class))),
+            EntryController::class => factory(fn (ContainerInterface $c) => new EntryController(self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, MediaRepository::class), self::get($c, AuditTrail::class), self::get($c, TermRepository::class), self::get($c, SecurityPosture::class), self::get($c, MenuRepository::class), self::get($c, SiteLanguages::class))),
             TermRepository::class => factory(fn (ContainerInterface $c) => new TermRepository(self::get($c, Db::class))),
             TermController::class => factory(fn (ContainerInterface $c) => new TermController(
                 self::get($c, TermRepository::class), self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class),
+                self::get($c, SiteContext::class),
             )),
 
             SecurityPosture::class => factory(function (ContainerInterface $c) use ($paths): SecurityPosture {
@@ -330,7 +341,7 @@ final class Kernel
         // ADR-0018: схему меняет только админ на /admin/database (или CLI), не обычный запрос.
         $router->middleware(new MaintenanceMode(self::get($c, Migrator::class), $responses));
 
-        $router->get('/', [PublicController::class, 'home']);
+        $router->get('/', [PublicController::class, 'root']);
         $router->get('/admin/login', [AuthController::class, 'form']);
         $router->post('/admin/login', [AuthController::class, 'submit']);
         $router->get('/admin/2fa', [AuthController::class, 'totpForm']);
@@ -351,6 +362,7 @@ final class Kernel
         $router->get('/admin/entries/{id}/edit', [EntryController::class, 'edit'])->where(['id' => EntryId::class])->middleware($staff);
         $router->post('/admin/entries/{id}', [EntryController::class, 'update'])->where(['id' => EntryId::class])->middleware($staff);
         $router->post('/admin/entries/{id}/publish', [EntryController::class, 'publish'])->where(['id' => EntryId::class])->middleware($staff);
+        $router->post('/admin/entries/{id}/translations', [EntryController::class, 'translate'])->where(['id' => EntryId::class])->middleware($staff);
 
         $router->get('/admin/media', [MediaController::class, 'index'])->middleware($staff);
         $router->post('/admin/media', [MediaController::class, 'store'])->middleware($staff);
@@ -369,9 +381,14 @@ final class Kernel
             $router->post("/admin/comments/{id}/{$action}", [CommentController::class, $action])->where(['id' => CommentId::class])->middleware($staff);
         }
 
-        $router->get('/category/{slug}', [TermController::class, 'category'])->where(['slug' => Slug::class]);
-        $router->get('/tag/{slug}', [TermController::class, 'tag'])->where(['slug' => Slug::class]);
-        $router->get('/{slug}', [PublicController::class, 'show'])->where(['slug' => Slug::class]);
+        // i18n: /{lang}/… (язык проверяет SiteLanguages в обработчике). Дерево маршрутов держит
+        // один параметр на уровень, поэтому /{lang} — это и главная языка, и 301 со старого /{slug}.
+        $router->get('/category/{slug}', [TermController::class, 'movedCategory'])->where(['slug' => Slug::class]);
+        $router->get('/tag/{slug}', [TermController::class, 'movedTag'])->where(['slug' => Slug::class]);
+        $router->get('/{lang}', [PublicController::class, 'first'])->where(['lang' => Slug::class]);
+        $router->get('/{lang}/{slug}', [PublicController::class, 'show'])->where(['lang' => Slug::class, 'slug' => Slug::class]);
+        $router->get('/{lang}/category/{slug}', [TermController::class, 'category'])->where(['lang' => Slug::class, 'slug' => Slug::class]);
+        $router->get('/{lang}/tag/{slug}', [TermController::class, 'tag'])->where(['lang' => Slug::class, 'slug' => Slug::class]);
         return $router;
     }
 

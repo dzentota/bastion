@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Bastion\Tests\Integration;
 
 use Bastion\Infrastructure\Database\Connection;
-use Bastion\Infrastructure\Database\Migrations\{Catalog, DatabaseBackup, M0001Baseline, Migration, Migrator, TamperedMigrations};
+use Bastion\Infrastructure\Database\Migrations\{Catalog, DatabaseBackup, M0001Baseline, M0002EntryLanguages, Migration, Migrator};
 use PHPUnit\Framework\TestCase;
 use SecureDb\Db;
 
@@ -23,8 +23,8 @@ final class MigratorTest extends TestCase
     {
         $db = $this->db();
         $m = $this->migrator($db, Catalog::all());
-        self::assertSame(['0001_baseline'], $m->state()->pending);
-        self::assertSame(['0001_baseline'], $m->migrate(null, 'test'));
+        self::assertSame(self::ids(), $m->state()->pending);
+        self::assertSame(self::ids(), $m->migrate(null, 'test'));
         self::assertTrue($m->state()->isCurrent());
         self::assertSame([], $m->migrate(null, 'test'), 'повторный запуск ничего не делает');
     }
@@ -36,9 +36,31 @@ final class MigratorTest extends TestCase
         $db->insert('?_terms', ['kind' => 'tag', 'slug' => 'php']);
 
         $m = $this->migrator($db, Catalog::all());
-        self::assertSame(['0001_baseline'], $m->state()->pending);
+        self::assertSame(self::ids(), $m->state()->pending);
         $m->migrate(null, 'test');
         self::assertSame('php', $db->selectCell('SELECT slug FROM ?_terms'));
+    }
+
+    public function testEntryLanguagesMigrationKeepsExistingEntriesInTheDefaultLanguage(): void
+    {
+        $db = $this->db();
+        $this->migrator($db, [new M0001Baseline()])->migrate(null, 'test');
+        $db->insert('?_entries', ['id' => 'e1', 'type' => 'post', 'title' => 'Старый', 'slug' => 'old', 'blocks' => '[]',
+            'status' => 'published', 'author_id' => 'a', 'published_at' => null, 'updated_at' => '2026-01-01T00:00:00+00:00']);
+
+        $this->migrator($db, Catalog::all('ru'))->migrate(null, 'test');
+
+        self::assertSame(['lang' => 'ru', 'translation_group' => 'e1', 'title' => 'Старый'], $db->selectRow('SELECT lang, translation_group, title FROM ?_entries'));
+        // slug уникален в пределах языка, а не глобально
+        $row = ['type' => 'post', 'title' => 'T', 'slug' => 'old', 'blocks' => '[]', 'status' => 'draft', 'author_id' => 'a', 'published_at' => null, 'updated_at' => 'x'];
+        $db->insert('?_entries', ['id' => 'e2', 'lang' => 'en', 'translation_group' => 'e1'] + $row);
+        $this->expectException(\Throwable::class);
+        $db->insert('?_entries', ['id' => 'e3', 'lang' => 'en', 'translation_group' => 'e3'] + $row);
+    }
+
+    public function testDefaultLanguageDoesNotChangeTheChecksum(): void
+    {
+        self::assertSame(Migrator::checksum(new M0002EntryLanguages('en'), 'sqlite'), Migrator::checksum(new M0002EntryLanguages('ru'), 'sqlite'));
     }
 
     public function testNewMigrationRunsAfterBaselineAndCanAlterExistingTables(): void
@@ -90,7 +112,13 @@ final class MigratorTest extends TestCase
         } catch (\RuntimeException $e) {
             self::assertSame('disk full', $e->getMessage());
         }
-        self::assertSame(['0001_baseline'], $m->state()->pending);
+        self::assertSame(self::ids(), $m->state()->pending);
+    }
+
+    /** @return list<string> */
+    private static function ids(): array
+    {
+        return array_map(static fn (Migration $m) => $m->id(), Catalog::all());
     }
 
     private function db(): Db

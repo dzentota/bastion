@@ -1,11 +1,13 @@
 <!doctype html>
-<html lang="en">
+<html lang="{% if site.lang %}{{ site.lang | attr }}{% else %}en{% endif %}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% if entry %}{{ entry.title }} — {% endif %}{{ site.name }}</title>
 <link rel="stylesheet" href="/assets/theme.css">
+{% each site.alternates as a %}<link rel="alternate" hreflang="{{ a.lang | attr }}" href="{{ a.url | url }}">
+{% endeach %}
 </head>
 <body>
-<header class="site"><a href="/">{{ site.name }}</a>{% if site.menu %}<nav class="menu" aria-label="Site">{% each site.menu as item %}<a href="{{ item.url | url }}">{{ item.title }}</a>{% endeach %}</nav>{% endif %}</header>
+<header class="site"><a href="{% if site.home %}{{ site.home | url }}{% else %}/{% endif %}">{{ site.name }}</a>{% if site.menu %}<nav class="menu" aria-label="Site">{% each site.menu as item %}<a href="{{ item.url | url }}">{{ item.title }}</a>{% endeach %}</nav>{% endif %}{% if site.languages %}<nav class="languages" aria-label="Language">{% each site.languages as l %}{% if l.current %}<strong>{{ l.lang }}</strong>{% else %}<a href="{{ l.url | url }}" hreflang="{{ l.lang | attr }}" lang="{{ l.lang | attr }}">{{ l.lang }}</a>{% endif %} {% endeach %}</nav>{% endif %}</header>
 <main>

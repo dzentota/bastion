@@ -105,11 +105,11 @@ final class HttpHarness
     }
 
     /** Полная установка + вход админа с подключением TOTP. Возвращает секрет TOTP. */
-    public function installAndLogin(string $user = 'owner', string $pass = 'correct horse battery staple'): string
+    public function installAndLogin(string $user = 'owner', string $pass = 'correct horse battery staple', string $languages = 'en'): string
     {
         $this->get('/install');
         $this->post('/install', ['install_token' => trim((string) file_get_contents($this->paths->installToken())),
-            'driver' => 'sqlite', 'username' => $user, 'password' => $pass, 'email' => $user . '@example.com']);
+            'driver' => 'sqlite', 'username' => $user, 'password' => $pass, 'email' => $user . '@example.com', 'languages' => $languages]);
         $this->get('/admin/login');
         $this->post('/admin/login', ['username' => $user, 'password' => $pass]);
         $this->get('/admin/2fa/setup');

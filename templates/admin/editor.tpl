@@ -5,6 +5,8 @@
 <form method="post" action="{{ action | url }}" class="card">
   <input type="hidden" name="_token" value="{{ csrf | attr }}">
   {% if not entry %}<input type="hidden" name="type" value="{{ values.type | attr }}">{% endif %}
+  {% if languages %}<label>Language <select name="lang">{% each languages as l %}<option value="{{ l.code | attr }}"{% if l.selected %} selected{% endif %}>{{ l.code }}</option>{% endeach %}</select></label>{% endif %}
+  {% if entry %}<p class="hint">Language: <code>{{ entry.lang }}</code></p>{% endif %}
   <label>Title <input name="title" value="{{ values.title | attr }}" required maxlength="200"></label>
   <label>Slug (address) <input name="slug" value="{{ values.slug | attr }}" required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxlength="96"></label>
   {% if not is_page %}
@@ -45,4 +47,23 @@
   <button>Publish</button>
 </form>
 {% endif %}{% endif %}{% endif %}
+{% if translations %}
+<section class="card" aria-labelledby="translations">
+  <h2 id="translations">Translations</h2>
+  <table>
+    <tbody>
+    {% each translations as t %}<tr>
+      <td><code>{{ t.lang }}</code></td>
+      <td>{% if t.current %}{{ t.title }} (this entry){% else %}{% if t.edit %}<a href="{{ t.edit | url }}">{{ t.title }}</a>{% endif %}{% endif %}</td>
+      <td>{{ t.status }}</td>
+      <td>{% if not t.edit %}<form method="post" action="/admin/entries/{{ entry.id | attr }}/translations">
+        <input type="hidden" name="_token" value="{{ csrf | attr }}">
+        <input type="hidden" name="lang" value="{{ t.lang | attr }}">
+        <button>Add translation</button>
+      </form>{% endif %}</td>
+    </tr>{% endeach %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
 {% include "partials/foot" %}

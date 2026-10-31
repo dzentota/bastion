@@ -5,12 +5,14 @@ namespace Bastion\Content\Domain;
 
 use Bastion\Content\Domain\Block\BlockList;
 
-/** Агрегат: пост или страница. */
+/** Агрегат: пост или страница на одном языке. Переводы — записи с общей translationGroup. */
 final class Entry
 {
     private function __construct(
         public readonly EntryId $id,
         public readonly EntryType $type,
+        public readonly Language $lang,
+        public readonly EntryId $translationGroup,
         private Title $title,
         private Slug $slug,
         private BlockList $blocks,
@@ -20,16 +22,23 @@ final class Entry
     ) {
     }
 
-    public static function draft(EntryType $type, Title $title, Slug $slug, BlockList $blocks, string $authorId): self
+    public static function draft(EntryType $type, Language $lang, Title $title, Slug $slug, BlockList $blocks, string $authorId): self
     {
-        return new self(EntryId::generate(), $type, $title, $slug, $blocks, EntryStatus::Draft, $authorId, null);
+        $id = EntryId::generate();
+        return new self($id, $type, $lang, $id, $title, $slug, $blocks, EntryStatus::Draft, $authorId, null);
+    }
+
+    /** Черновик перевода: тот же тип и группа, блоки — отправная точка для переводчика. */
+    public function translate(Language $lang, Title $title, Slug $slug, string $authorId): self
+    {
+        return new self(EntryId::generate(), $this->type, $lang, $this->translationGroup, $title, $slug, $this->blocks, EntryStatus::Draft, $authorId, null);
     }
 
     public static function restore(
-        EntryId $id, EntryType $type, Title $title, Slug $slug, BlockList $blocks,
+        EntryId $id, EntryType $type, Language $lang, EntryId $translationGroup, Title $title, Slug $slug, BlockList $blocks,
         EntryStatus $status, string $authorId, ?\DateTimeImmutable $publishedAt,
     ): self {
-        return new self($id, $type, $title, $slug, $blocks, $status, $authorId, $publishedAt);
+        return new self($id, $type, $lang, $translationGroup, $title, $slug, $blocks, $status, $authorId, $publishedAt);
     }
 
     public function revise(Title $title, Slug $slug, BlockList $blocks): void
@@ -45,6 +54,8 @@ final class Entry
         $this->publishedAt ??= $now;
     }
 
+    /** Публичный адрес: /{язык}/{slug}. */
+    public function path(): string { return '/' . $this->lang->toNative() . '/' . $this->slug->toNative(); }
     public function title(): Title { return $this->title; }
     public function slug(): Slug { return $this->slug; }
     public function blocks(): BlockList { return $this->blocks; }

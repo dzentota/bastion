@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\Tests\Integration;
 
-use Bastion\Content\Domain\{Entry, EntryType, Slug, Title};
+use Bastion\Content\Domain\{Entry, EntryType, Language, Slug, Title};
 use Bastion\Content\Domain\Block\BlockList;
 use Bastion\Content\Infrastructure\EntryRepository;
 use Bastion\IdentityAccess\Domain\{NewPassword, Role, Username};
@@ -18,18 +18,18 @@ final class RepositoriesTest extends TestCase
     public function testEntryLifecycle(): void
     {
         $repo = new EntryRepository(Database::memory());
-        $e = Entry::draft(EntryType::Post, Title::fromNative('Hello'), Slug::fromNative('hello'),
+        $e = Entry::draft(EntryType::Post, Language::fromNative('en'), Title::fromNative('Hello'), Slug::fromNative('hello'),
             BlockList::fromJson('[{"type":"paragraph","data":{"text":"Hi"}}]'), 'author');
         $repo->save($e);
-        self::assertNull($repo->findPublishedBySlug(Slug::fromNative('hello')));
+        self::assertNull($repo->findPublishedBySlug(Language::fromNative('en'), Slug::fromNative('hello')));
 
         $e->publish(new \DateTimeImmutable());
         $repo->save($e);
-        $found = $repo->findPublishedBySlug(Slug::fromNative('hello'));
+        $found = $repo->findPublishedBySlug(Language::fromNative('en'), Slug::fromNative('hello'));
         self::assertNotNull($found);
         self::assertSame($e->blocks()->toJson(), $found->blocks()->toJson());
-        self::assertTrue($repo->slugTaken(Slug::fromNative('hello')));
-        self::assertFalse($repo->slugTaken(Slug::fromNative('hello'), $e->id));
+        self::assertTrue($repo->slugTaken(Language::fromNative('en'), Slug::fromNative('hello')));
+        self::assertFalse($repo->slugTaken(Language::fromNative('en'), Slug::fromNative('hello'), $e->id));
     }
 
     public function testAccountsAndEncryptedTotp(): void

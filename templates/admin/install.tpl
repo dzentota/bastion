@@ -34,6 +34,11 @@
     <label>Send from <input name="smtp_from" type="email" placeholder="noreply@example.com"></label>
   </fieldset>
   <fieldset>
+    <legend>Site</legend>
+    <label>Languages <input name="languages" value="en" pattern="[a-z]{2}(\s*,\s*[a-z]{2})*" maxlength="64" spellcheck="false"></label>
+    <p class="hint">Two-letter codes separated by commas. The first one is the default language, for example <code>en, ru</code>.</p>
+  </fieldset>
+  <fieldset>
     <legend>Administrator</legend>
     <label>Username <input name="username" value="{{ username | attr }}" required autocomplete="username"></label>
     <label>Email (for password resets) <input name="email" type="email" value="{{ email | attr }}" required autocomplete="email"></label>

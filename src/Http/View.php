@@ -14,7 +14,7 @@ final class View
         private readonly Renderer $admin,
         private readonly Renderer $theme,
         private readonly ResponseFactoryInterface $responses,
-        /** @var (\Closure(): list<array{title: string, url: string}>)|null */
+        /** @var (\Closure(\Bastion\Content\Domain\Language): list<array{title: string, url: string}>)|null */
         private readonly ?\Closure $siteMenu = null,
     ) {
     }
@@ -32,10 +32,19 @@ final class View
     /** @param array<string, mixed> $ctx */
     public function theme(string $template, array $ctx, int $status = 200): ResponseInterface
     {
-        if (is_array($ctx['site'] ?? null) && $this->siteMenu !== null) {
-            $ctx['site']['menu'] = ($this->siteMenu)();
+        if (is_array($ctx['site'] ?? null) && $this->siteMenu !== null
+            && \Bastion\Content\Domain\Language::tryParse($ctx['site']['lang'] ?? null, $lang)) {
+            $ctx['site']['menu'] = ($this->siteMenu)($lang);
         }
         return $this->html($this->theme->render(TemplateName::fromNative($template), $ctx), $status);
+    }
+
+    /** 301 для переехавших адресов (старые /{slug} до i18n). Те же ограничения, что у redirect(). */
+    #[\HybridTM\Attributes\AbuserStory('legacy-redirect-abuse')]
+    #[\HybridTM\Attributes\Mitigation(cwe: 'CWE-601', description: 'Legacy-URL redirects are built from stored entries and pass the local-path allowlist of View::redirect')]
+    public function moved(string $path): ResponseInterface
+    {
+        return $this->redirect($path)->withStatus(301);
     }
 
     public function redirect(string $path): ResponseInterface

@@ -30,14 +30,14 @@ final class PagesHttpTest extends TestCase
         self::assertSame(303, $this->create($h, 'hello', ['type' => 'post', 'categories' => 'news']));
 
         $anon = $h->fresh();
-        self::assertSame(200, $anon->get('/about')->getStatusCode());
+        self::assertSame(200, $anon->get('/en/about')->getStatusCode());
         self::assertStringNotContainsString('comment-form', $anon->body(), 'у страницы нет формы комментария');
         self::assertStringNotContainsString('/category/news', $anon->body(), 'термины страницы не сохраняются');
 
-        $anon->get('/');
+        $anon->get('/en');
         self::assertStringContainsString('/hello', $anon->body());
         self::assertStringNotContainsString('/about', $anon->body(), 'страницы нет в ленте');
-        $anon->get('/category/news');
+        $anon->get('/en/category/news');
         self::assertStringNotContainsString('/about', $anon->body());
 
         $h->get('/admin');
@@ -78,11 +78,11 @@ final class PagesHttpTest extends TestCase
         self::assertSame(303, $this->create($h, 'a-post', ['in_menu' => '1']), 'у постов флажок игнорируется');
 
         $anon = $h->fresh();
-        $anon->get('/');
+        $anon->get('/en');
         preg_match('~<nav class="menu"[^>]*>(.*?)</nav>~s', $anon->body(), $m);
-        self::assertSame(['/about', '/contact'], preg_match_all('~href="([^"]+)"~', $m[1] ?? '', $hrefs) ? $hrefs[1] : [], 'только опубликованные страницы, по позиции');
+        self::assertSame(['/en/about', '/en/contact'], preg_match_all('~href="([^"]+)"~', $m[1] ?? '', $hrefs) ? $hrefs[1] : [], 'только опубликованные страницы, по позиции');
         self::assertStringContainsString('About &lt;us&gt;', $m[1]);
-        $anon->get('/category/none');
+        $anon->get('/en/category/none');
         self::assertStringContainsString('class="menu"', $anon->body(), 'меню и на служебных страницах темы');
 
         self::assertSame(422, $this->create($h, 'bad-pos', ['type' => 'page', 'in_menu' => '1', 'menu_position' => '0'], publish: false));
@@ -93,6 +93,6 @@ final class PagesHttpTest extends TestCase
         preg_match('~/admin/entries/([0-9a-f-]+)/edit">Contact~', $h->body(), $id);
         $h->get("/admin/entries/{$id[1]}/edit");
         $h->post("/admin/entries/{$id[1]}", ['title' => 'Contact', 'slug' => 'contact', 'blocks' => [['type' => 'paragraph', 'text' => 'Body']]]);
-        self::assertStringNotContainsString('href="/contact"', (string) $h->fresh()->get('/')->getBody());
+        self::assertStringNotContainsString('href="/en/contact"', (string) $h->fresh()->get('/en')->getBody());
     }
 }

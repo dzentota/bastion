@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\Http\Controller;
 
+use Bastion\Content\Domain\SiteLanguages;
 use Bastion\Http\View;
 use Bastion\IdentityAccess\Domain\{NewPassword, SiteUrl, StaffEmail, Username};
 use Bastion\Mail\SmtpConfig;
@@ -97,10 +98,18 @@ final class InstallController
             }
         }
 
+        // «en, ru»: первый — язык по умолчанию
+        $rawLanguages = Input::string($request, 'languages', 64);
+        $codes = array_values(array_filter(array_map('trim', explode(',', $rawLanguages === '' ? 'en' : $rawLanguages))));
+        $languages = SiteLanguages::fromConfig($codes, $codes[0] ?? null);
+        if (count($codes) > SiteLanguages::MAX || $languages->codes() !== array_values(array_unique($codes))) {
+            $errors[] = 'Languages: comma-separated two-letter codes, for example "en, ru".';
+        }
+
         if ($errors === [] && $username !== null && $password !== null && $email !== null && $site !== null) {
             try {
                 $ip = $request->getServerParams()['REMOTE_ADDR'] ?? null;
-                $this->installer->install($db, $username, $password, $email, $site, $s3, $smtp, is_string($ip) ? $ip : 'unknown');
+                $this->installer->install($db, $username, $password, $email, $site, $s3, $smtp, is_string($ip) ? $ip : 'unknown', $languages);
                 return $this->view->redirect('/admin/login');
             } catch (\PDOException) {
                 $errors[] = 'Cannot connect to the database with these settings';

@@ -40,7 +40,7 @@ final class CommentController
         }
         $entry = EntryId::tryParse(Input::string($request, 'entry', 36), $id) ? $this->entries->find($id) : null;
         if ($entry === null || !$entry->isPublished() || !$entry->type->inFeed()) {
-            return $this->view->theme('not-found', ['site' => ['name' => 'Bastion']], 404);
+            return $this->public->notFound();
         }
         $author = Input::string($request, 'author', 300);
         $body = Input::string($request, 'body', 20000);
@@ -50,7 +50,7 @@ final class CommentController
             return $this->public->render($entry, ['error' => $e->userMessage(), 'author' => $author, 'body' => $body], 422);
         }
         // Post/Redirect/Get: перезагрузка страницы не отправляет комментарий повторно
-        return $this->view->redirect('/' . $entry->slug()->toNative() . '?comment=sent');
+        return $this->view->redirect($entry->path() . '?comment=sent');
     }
 
     public function queue(ServerRequestInterface $request): ResponseInterface
@@ -66,7 +66,7 @@ final class CommentController
             'items' => array_map(static fn (Comment $c) => [
                 'id' => $c->id->toNative(), 'author' => $c->author, 'lines' => $c->body->lines(),
                 'date' => $c->createdAt->format('Y-m-d H:i'), 'links' => $c->body->linkCount(),
-                'entry' => ($e = $entryOf($c->entry)) !== null ? ['title' => $e->title(), 'url' => '/' . $e->slug()->toNative()] : null,
+                'entry' => ($e = $entryOf($c->entry)) !== null ? ['title' => $e->title(), 'url' => $e->path()] : null,
             ], $this->comments->pending(100)),
         ]);
     }

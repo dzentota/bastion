@@ -18,7 +18,7 @@ final class DatabaseUpdateHttpTest extends TestCase
     {
         [$h, $secret] = $this->siteWithPendingUpdate();
 
-        self::assertSame(503, $h->fresh()->get('/')->getStatusCode(), 'публичный сайт на старой схеме не работает');
+        self::assertSame(503, $h->fresh()->get('/en')->getStatusCode(), 'публичный сайт на старой схеме не работает');
         self::assertSame(503, $h->get('/admin/media')->getStatusCode());
         self::assertSame('/admin/database', $h->get('/admin')->getHeaderLine('Location'));
 
@@ -26,7 +26,7 @@ final class DatabaseUpdateHttpTest extends TestCase
         self::assertStringContainsString('0001_baseline', $h->body());
         self::assertSame(303, $h->post('/admin/database', ['code' => $this->nextCode($secret)])->getStatusCode());
 
-        self::assertSame(200, $h->fresh()->get('/')->getStatusCode());
+        self::assertSame(200, $h->fresh()->get('/en')->getStatusCode());
         self::assertNotEmpty(glob($h->paths->backups() . '/db-*.sqlite'), 'копия снята до миграции');
         $h->get('/admin/audit');
         self::assertStringContainsString('schema_migrated', $h->body());
@@ -42,7 +42,7 @@ final class DatabaseUpdateHttpTest extends TestCase
         // код, которым админ только что вошёл, повторно не принимается
         $used = TOTP::createFromSecret($secret)->now();
         self::assertSame(401, $h->post('/admin/database', ['code' => $used])->getStatusCode());
-        self::assertSame(503, $h->fresh()->get('/')->getStatusCode(), 'ничего не применено');
+        self::assertSame(503, $h->fresh()->get('/en')->getStatusCode(), 'ничего не применено');
     }
 
     public function testCsrfIsRequired(): void
@@ -50,7 +50,7 @@ final class DatabaseUpdateHttpTest extends TestCase
         [$h, $secret] = $this->siteWithPendingUpdate();
         $h->get('/admin/database');
         self::assertSame(403, $h->post('/admin/database', ['code' => $this->nextCode($secret)], false)->getStatusCode());
-        self::assertSame(503, $h->fresh()->get('/')->getStatusCode());
+        self::assertSame(503, $h->fresh()->get('/en')->getStatusCode());
     }
 
     public function testNonAdminsAndAnonymousCannotMigrate(): void
@@ -67,7 +67,7 @@ final class DatabaseUpdateHttpTest extends TestCase
         self::assertSame(403, $author->post('/admin/database', ['code' => '123456'])->getStatusCode());
 
         self::assertSame('/admin/login', $h->fresh()->get('/admin/database')->getHeaderLine('Location'));
-        self::assertSame(503, $h->fresh()->get('/')->getStatusCode());
+        self::assertSame(503, $h->fresh()->get('/en')->getStatusCode());
     }
 
     /** @return array{0: HttpHarness, 1: string} установка, затем «новый релиз» с неприменённой миграцией */

@@ -32,19 +32,19 @@ final class TaxonomyAttackTest extends TestCase
         $this->post($h, 'draft-only', 'news', '') ;
 
         $anon = $h->fresh();
-        self::assertSame(200, $anon->get('/category/news')->getStatusCode());
+        self::assertSame(200, $anon->get('/en/category/news')->getStatusCode());
         self::assertSame(20, substr_count($anon->body(), '<article class="summary">'), 'фиксированный размер страницы');
-        self::assertStringContainsString('/category/news?page=2', $anon->body());
-        self::assertSame(200, $anon->get('/category/news?page=2')->getStatusCode());
+        self::assertStringContainsString('/en/category/news?page=2', $anon->body());
+        self::assertSame(200, $anon->get('/en/category/news?page=2')->getStatusCode());
         self::assertSame(2, substr_count($anon->body(), '<article class="summary">'));
 
-        self::assertSame(200, $anon->get('/category/news?limit=100000&utm_source=x')->getStatusCode(), 'посторонние параметры игнорируются');
+        self::assertSame(200, $anon->get('/en/category/news?limit=100000&utm_source=x')->getStatusCode(), 'посторонние параметры игнорируются');
         self::assertSame(20, substr_count($anon->body(), '<article class="summary">'));
-        self::assertSame(200, $anon->get('/post-1')->getStatusCode());
-        self::assertStringContainsString('href="/tag/php"', $anon->body(), 'термины показаны на странице записи');
+        self::assertSame(200, $anon->get('/en/post-1')->getStatusCode());
+        self::assertStringContainsString('href="/en/tag/php"', $anon->body(), 'термины показаны на странице записи');
 
-        foreach (['/category/news?page=3', '/category/news?page=51', '/category/news?page=999999999', '/category/news?page=0',
-                  '/category/news?page[]=1', '/category/unknown', '/tag/news', '/tag/PHP'] as $url) {
+        foreach (['/en/category/news?page=3', '/en/category/news?page=51', '/en/category/news?page=999999999', '/en/category/news?page=0',
+                  '/en/category/news?page[]=1', '/en/category/unknown', '/en/tag/news', '/en/tag/PHP', '/xx/category/news'] as $url) {
             self::assertSame(404, $anon->get($url)->getStatusCode(), $url);
         }
     }

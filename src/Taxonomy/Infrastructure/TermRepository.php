@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\Taxonomy\Infrastructure;
 
-use Bastion\Content\Domain\{EntryId, EntryStatus, EntryType, Slug};
+use Bastion\Content\Domain\{EntryId, EntryStatus, EntryType, Language, Slug};
 use Bastion\Taxonomy\Domain\{PageNumber, Term, TermKind, TermList};
 use HybridTM\Attributes\{AbuserStory, AssetId, Mitigation};
 use SecureDb\Db;
@@ -60,13 +60,13 @@ final class TermRepository
      * Id опубликованных записей термина, новые первыми; на одну больше PAGE_SIZE — признак следующей страницы.
      * @return list<string>
      */
-    public function publishedEntryIds(Term $term, PageNumber $page): array
+    public function publishedEntryIds(Term $term, Language $lang, PageNumber $page): array
     {
         return self::strings($this->db->selectCol(
             'SELECT e.id FROM ?_entry_terms t JOIN ?_entries e ON e.id = t.entry_id
-             WHERE t.kind = ? AND t.slug = ? AND e.status = ? AND e.type = ?
+             WHERE t.kind = ? AND t.slug = ? AND e.status = ? AND e.type = ? AND e.lang = ?
              ORDER BY e.published_at DESC LIMIT ? OFFSET ?',
-            $term->kind->value, $term->slug->toNative(), EntryStatus::Published->value, EntryType::Post->value,
+            $term->kind->value, $term->slug->toNative(), EntryStatus::Published->value, EntryType::Post->value, $lang->toNative(),
             self::PAGE_SIZE + 1, ($page->toInt() - 1) * self::PAGE_SIZE,
         ));
     }

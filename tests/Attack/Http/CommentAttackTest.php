@@ -62,16 +62,16 @@ final class CommentAttackTest extends TestCase
         $payload = "<script>alert(1)</script>\n<img src=x onerror=alert(2)>";
         $res = $this->comment('Eve', $payload);
         self::assertSame(303, $res->getStatusCode(), 'Post/Redirect/Get');
-        self::assertSame('/post?comment=sent', $res->getHeaderLine('Location'));
-        self::assertStringContainsString('after moderation', (string) $this->h->fresh()->get('/post?comment=sent')->getBody());
-        self::assertStringNotContainsString('onerror', (string) $this->h->fresh()->get('/post')->getBody(), 'не опубликован до модерации');
+        self::assertSame('/en/post?comment=sent', $res->getHeaderLine('Location'));
+        self::assertStringContainsString('after moderation', (string) $this->h->fresh()->get('/en/post?comment=sent')->getBody());
+        self::assertStringNotContainsString('onerror', (string) $this->h->fresh()->get('/en/post')->getBody(), 'не опубликован до модерации');
 
         $this->h->get('/admin/comments');
         self::assertStringNotContainsString('<script>alert(1)', $this->h->body(), 'модератор видит экранированный текст');
         self::assertStringContainsString('&lt;script&gt;', $this->h->body());
 
         $this->moderateAll('approve');
-        $page = (string) $this->h->fresh()->get('/post')->getBody();
+        $page = (string) $this->h->fresh()->get('/en/post')->getBody();
         self::assertStringContainsString('&lt;img src=x onerror=alert(2)&gt;', $page);
         self::assertDoesNotMatchRegularExpression('/<(script|img)\b/i', $page);
     }
@@ -163,6 +163,6 @@ final class CommentAttackTest extends TestCase
         $author->get('/admin');
         self::assertSame(403, $author->post("/admin/comments/{$id}/approve", [])->getStatusCode());
 
-        self::assertStringNotContainsString('hello', (string) $this->h->fresh()->get('/post')->getBody());
+        self::assertStringNotContainsString('hello', (string) $this->h->fresh()->get('/en/post')->getBody());
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Bastion\Http\Controller;
 
 use Bastion\Audit\Domain\{AuditAction, AuditTrail};
-use Bastion\Content\Domain\{Entry, EntryId, EntryType, MenuPosition, Slug, Title};
+use Bastion\Content\Domain\{Entry, EntryId, EntryType, Language, MenuPosition, SiteLanguages, Slug, Title};
 use Bastion\Content\Domain\Block\{Block, BlockList, Heading, Image, InvalidBlock, Paragraph, Quote};
 use Bastion\Media\Domain\{MediaId, MediaItem};
 use Bastion\Media\Infrastructure\MediaRepository;
@@ -36,6 +36,7 @@ final class EntryController
         private readonly TermRepository $terms,
         private readonly \Bastion\SecurityMonitoring\Application\SecurityPosture $posture,
         private readonly \Bastion\Content\Infrastructure\MenuRepository $menu,
+        private readonly SiteLanguages $languages,
     ) {
     }
 
@@ -44,7 +45,7 @@ final class EntryController
         $account = $this->account($request);
         $rows = array_map(fn (Entry $e) => [
             'id' => $e->id->toNative(), 'title' => $e->title(), 'status' => $e->status()->value, 'type' => $e->type->value,
-            'url' => '/' . $e->slug()->toNative(), 'published' => $e->isPublished(),
+            'url' => $e->path(), 'lang' => $e->lang->toNative(), 'published' => $e->isPublished(),
         ], $this->entries->latest(100, false));
         return $this->view->admin($request, 'dashboard', [
             'entries' => $rows, 'me' => ['name' => $account->username],
@@ -56,7 +57,7 @@ final class EntryController
     public function create(ServerRequestInterface $request): ResponseInterface
     {
         $type = ($request->getQueryParams()['type'] ?? null) === 'page' ? EntryType::Page : EntryType::Post;
-        return $this->editor($request, null, ['title' => '', 'slug' => '', 'categories' => '', 'tags' => '', 'type' => $type->value, 'in_menu' => false, 'menu_position' => '10'], [], []);
+        return $this->editor($request, null, ['title' => '', 'slug' => '', 'categories' => '', 'tags' => '', 'type' => $type->value, 'lang' => $this->languages->default->toNative(), 'in_menu' => false, 'menu_position' => '10'], [], []);
     }
 
     public function edit(ServerRequestInterface $request, EntryId $id): ResponseInterface
@@ -73,7 +74,7 @@ final class EntryController
                 : ['type' => $b::type()] + $data;
         }
         return $this->editor($request, $entry, [
-            'title' => $entry->title(), 'slug' => $entry->slug(), 'type' => $entry->type->value,
+            'title' => $entry->title(), 'slug' => $entry->slug(), 'type' => $entry->type->value, 'lang' => $entry->lang->toNative(),
             'categories' => $this->terms->forEntry($entry->id, TermKind::Category)->toInput(),
             'tags' => $this->terms->forEntry($entry->id, TermKind::Tag)->toInput(),
             'in_menu' => ($pos = $this->menu->positionOf($entry->id)) !== null,
@@ -110,6 +111,31 @@ final class EntryController
         return $this->view->redirect('/admin');
     }
 
+    /** Черновик перевода в той же группе: блоки и заголовок исходника — отправная точка. */
+    #[AbuserStory('translation-hijack')]
+    #[Mitigation(cwe: 'CWE-285', description: 'Adding a translation requires edit rights on the source entry; the language must be a configured site language not yet present in the group')]
+    public function translate(ServerRequestInterface $request, EntryId $id): ResponseInterface
+    {
+        $source = $this->entries->find($id);
+        if ($source === null || !$this->mayEdit($request, $source)) {
+            return $this->view->admin($request, 'not-found', [], 404);
+        }
+        $lang = $this->languages->resolve(Input::string($request, 'lang', 8));
+        $taken = array_map(static fn (Entry $e) => $e->lang->toNative(), $this->entries->translations($source->translationGroup));
+        if ($lang === null || in_array($lang->toNative(), $taken, true)) {
+            $this->sensor->event(DetectionPoint::IE2, ActorKey::ip($this->ip($request)));
+            return $this->view->redirect('/admin/entries/' . $source->id->toNative() . '/edit');
+        }
+        $slug = $source->slug();
+        if ($this->entries->slugTaken($lang, $slug)) {
+            $slug = Slug::tryParse(substr($slug->toNative(), 0, 92) . '-' . $lang->toNative(), $s) ? $s : $slug;
+        }
+        $copy = $source->translate($lang, $source->title(), $slug, $this->account($request)->getId());
+        $this->entries->save($copy);
+        $this->audit->record(AuditAction::EntryCreated, $this->account($request)->getId(), $copy->id->toNative(), $this->ip($request));
+        return $this->view->redirect('/admin/entries/' . $copy->id->toNative() . '/edit');
+    }
+
     private function save(ServerRequestInterface $request, ?Entry $entry): ResponseInterface
     {
         $errors = [];
@@ -119,6 +145,12 @@ final class EntryController
         // тип задаётся при создании и дальше не меняется
         $type = $entry->type ?? EntryType::tryFrom(Input::string($request, 'type', 8) ?: EntryType::Post->value);
         $type ?? $errors[] = 'Unknown entry type.';
+        // язык, как и тип, фиксируется при создании; перевод — отдельная запись
+        // без поля — язык по умолчанию; присланное значение (в т.ч. пустое или слишком длинное) обязано быть языком сайта
+        $body = $request->getParsedBody();
+        $sentLang = is_array($body) && array_key_exists('lang', $body);
+        $lang = $entry->lang ?? ($sentLang ? $this->languages->resolve(Input::string($request, 'lang', 8)) : $this->languages->default);
+        $lang ?? $errors[] = 'Unknown language.';
         $inFeed = $type?->inFeed() ?? true;
         $rawCategories = $inFeed ? Input::string($request, 'categories', 600) : '';
         $rawTags = $inFeed ? Input::string($request, 'tags', 1600) : '';
@@ -138,7 +170,7 @@ final class EntryController
         if ($slug && in_array($slug->toNative(), self::RESERVED_SLUGS, true)) {
             $errors[] = 'This slug is reserved by the system.';
         }
-        if ($slug && $this->entries->slugTaken($slug, $entry?->id)) {
+        if ($slug && $lang && $this->entries->slugTaken($lang, $slug, $entry?->id)) {
             $errors[] = 'This slug is already used.';
         }
         try {
@@ -149,20 +181,20 @@ final class EntryController
         }
         $this->detectXss($request, $rawTitle, $rawSlug, ...array_column($rows, 'text'));
         $menuValues = ['in_menu' => $inMenu, 'menu_position' => $rawPosition];
-        if ($errors !== [] || $categories === null || $tags === null || $type === null) {
+        if ($errors !== [] || $categories === null || $tags === null || $type === null || $lang === null || $title === null || $slug === null || $blocks === null) {
             $this->sensor->event(DetectionPoint::IE2, ActorKey::ip($this->ip($request)));
-            return $this->editor($request, $entry, ['title' => $rawTitle, 'slug' => $rawSlug, 'categories' => $rawCategories, 'tags' => $rawTags, 'type' => $type->value ?? 'post'] + $menuValues, $rows, $errors, 422);
+            return $this->editor($request, $entry, ['title' => $rawTitle, 'slug' => $rawSlug, 'categories' => $rawCategories, 'tags' => $rawTags, 'type' => $type->value ?? 'post', 'lang' => $lang?->toNative() ?? $this->languages->default->toNative()] + $menuValues, $rows, $errors, 422);
         }
 
         $action = $entry === null ? AuditAction::EntryCreated : AuditAction::EntryUpdated;
         if ($entry === null) {
-            $entry = Entry::draft($type, $title, $slug, $blocks, $this->account($request)->getId());
+            $entry = Entry::draft($type, $lang, $title, $slug, $blocks, $this->account($request)->getId());
         } else {
             $entry->revise($title, $slug, $blocks);
         }
         $this->entries->save($entry);
         if (!$this->terms->assign($entry->id, $categories) || !$this->terms->assign($entry->id, $tags)) {
-            return $this->editor($request, $entry, ['title' => $rawTitle, 'slug' => $rawSlug, 'categories' => $rawCategories, 'tags' => $rawTags, 'type' => $type->value],
+            return $this->editor($request, $entry, ['title' => $rawTitle, 'slug' => $rawSlug, 'categories' => $rawCategories, 'tags' => $rawTags, 'type' => $type->value, 'lang' => $lang->toNative()],
                 $rows, ['The site has reached the limit of distinct categories or tags; reuse existing ones.'], 422);
         }
         $this->menu->place($entry->id, $inMenu ? $position : null);
@@ -218,8 +250,14 @@ final class EntryController
             ], $library)),
         ], $rows, array_keys($rows));
         $account = $this->account($request);
+        $current = is_string($values['lang'] ?? null) ? $values['lang'] : $this->languages->default->toNative();
         return $this->view->admin($request, 'editor', [
-            'entry' => $entry ? ['id' => $entry->id->toNative(), 'published' => $entry->isPublished()] : null,
+            'entry' => $entry ? ['id' => $entry->id->toNative(), 'published' => $entry->isPublished(), 'lang' => $entry->lang->toNative()] : null,
+            // язык выбирается только у новой записи
+            'languages' => $entry === null && count($this->languages->all) > 1
+                ? array_map(static fn (Language $l) => ['code' => $l->toNative(), 'selected' => $l->toNative() === $current], $this->languages->all)
+                : [],
+            'translations' => $entry === null || count($this->languages->all) < 2 ? [] : $this->translationRows($entry),
             'action' => $entry ? '/admin/entries/' . $entry->id->toNative() : '/admin/entries',
             'values' => $values,
             'is_page' => ($values['type'] ?? 'post') === 'page',
@@ -227,6 +265,25 @@ final class EntryController
             'errors' => $errors,
             'can_publish' => $account->role->can(Capability::ContentPublish),
         ], $status);
+    }
+
+    /** @return list<array<string, mixed>> по строке на язык сайта: вариант есть — ссылка, нет — кнопка «добавить» */
+    private function translationRows(Entry $entry): array
+    {
+        $variants = [];
+        foreach ($this->entries->translations($entry->translationGroup) as $v) {
+            $variants[$v->lang->toNative()] = $v;
+        }
+        $rows = [];
+        foreach ($this->languages->all as $l) {
+            $v = $variants[$l->toNative()] ?? null;
+            $rows[] = [
+                'lang' => $l->toNative(), 'current' => $v !== null && $v->id->isSame($entry->id),
+                'edit' => $v !== null ? '/admin/entries/' . $v->id->toNative() . '/edit' : null,
+                'status' => $v?->status()->value, 'title' => $v?->title(),
+            ];
+        }
+        return $rows;
     }
 
     #[AbuserStory('privilege-escalation')]

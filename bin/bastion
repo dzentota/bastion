@@ -69,7 +69,8 @@ switch ($cmd) {
         exit($v->intact ? 0 : 2);
     case 'migrate':
         // ADR-0018: альтернатива экрану «Обновить базу» в админке. Перед миграциями — резервная копия.
-        $migrator = new \Bastion\Infrastructure\Database\Migrations\Migrator($db, $config['db']['driver'], $paths->migrationLock(), \Bastion\Infrastructure\Database\Migrations\Catalog::all());
+        $migrator = new \Bastion\Infrastructure\Database\Migrations\Migrator($db, $config['db']['driver'], $paths->migrationLock(),
+            \Bastion\Infrastructure\Database\Migrations\Catalog::all(\Bastion\Content\Domain\SiteLanguages::fromConfig($config['site']['languages'] ?? null, $config['site']['default_language'] ?? null)->default->toNative()));
         $backup = new \Bastion\Infrastructure\Database\Migrations\DatabaseBackup($db, $config['db']['driver'], $paths->backups());
         try {
             $done = $migrator->migrate('cli', 'cli', $audit, static function () use ($backup): void {

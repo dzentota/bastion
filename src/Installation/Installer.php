@@ -5,6 +5,7 @@ namespace Bastion\Installation;
 
 use Bastion\IdentityAccess\Domain\{NewPassword, Role, SiteUrl, StaffEmail, Username};
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
+use Bastion\Content\Domain\SiteLanguages;
 use Bastion\Infrastructure\Database\Connection;
 use Bastion\Infrastructure\Database\Migrations\{Catalog, Migrator};
 use Bastion\Audit\Domain\AuditAction;
@@ -52,7 +53,7 @@ final class Installer
      * @param array{driver: DbDriver, host?: DbHost, port?: int, name?: DbName, user?: DbName, password?: string} $db
      * @param array{host: string, port: int, user: string, password: string, from: string}|null $smtp
      */
-    public function install(array $db, Username $admin, NewPassword $password, StaffEmail $email, SiteUrl $site, ?S3Config $s3 = null, ?array $smtp = null, string $ip = 'unknown'): void
+    public function install(array $db, Username $admin, NewPassword $password, StaffEmail $email, SiteUrl $site, ?S3Config $s3 = null, ?array $smtp = null, string $ip = 'unknown', ?SiteLanguages $languages = null): void
     {
         if ($this->paths->isInstalled()) {
             throw new \LogicException('Already installed');
@@ -62,7 +63,8 @@ final class Installer
         }
 
         $config = ['db' => ['driver' => $db['driver']->toNative()]];
-        $config['site'] = ['url' => $site->toNative()];
+        $languages ??= SiteLanguages::fromConfig(null, null);
+        $config['site'] = ['url' => $site->toNative(), 'languages' => $languages->codes(), 'default_language' => $languages->default->toNative()];
         if ($smtp !== null) {
             $config['mail'] = $smtp;
         }
@@ -81,7 +83,7 @@ final class Installer
             @chmod($this->paths->sqlite(), 0600);
         }
 
-        (new Migrator($conn, $db['driver']->toNative(), $this->paths->migrationLock(), Catalog::all()))->migrate(null, $ip);
+        (new Migrator($conn, $db['driver']->toNative(), $this->paths->migrationLock(), Catalog::all($languages->default->toNative())))->migrate(null, $ip);
         $encKey = KeyFactory::generateEncryptionKey();
         KeyFactory::save($encKey, $this->paths->encryptionKey());
         @chmod($this->paths->encryptionKey(), 0600);

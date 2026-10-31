@@ -106,7 +106,7 @@ final class MediaHttpAttackTest extends TestCase
         preg_match('~/admin/entries/([0-9a-f-]+)/edit~', $ok->getHeaderLine('Location'), $m);
         $h->get("/admin/entries/{$m[1]}/edit");
         $h->post("/admin/entries/{$m[1]}/publish", []);
-        $page = (string) $h->fresh()->get('/pic')->getBody();
+        $page = (string) $h->fresh()->get('/en/pic')->getBody();
         self::assertStringContainsString('<img src="/media/' . $id . '" alt="A &quot;red&quot; square"', $page);
     }
 }

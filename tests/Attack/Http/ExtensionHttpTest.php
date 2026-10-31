@@ -33,7 +33,7 @@ final class ExtensionHttpTest extends TestCase
         self::assertSame(303, $h->post('/admin/extensions/enable', ['name' => 'acme/hello'])->getStatusCode());
         $h->get('/admin/extensions');
         self::assertStringContainsString('enabled', $h->body());
-        self::assertSame(200, $h->fresh()->get('/')->getStatusCode(), 'сайт работает с включённым расширением');
+        self::assertSame(200, $h->fresh()->get('/en')->getStatusCode(), 'сайт работает с включённым расширением');
 
         $h->get('/admin/audit');
         self::assertStringContainsString('extension_installed', $h->body());
