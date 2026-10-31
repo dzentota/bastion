@@ -20,6 +20,7 @@ final class SecurityHeaders implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $response = $handler->handle($request);
+        $status = $response->getStatusCode();
         $csp = CSPBuilder::fromData((string) json_encode([
             'default-src' => ['self' => true],
             'script-src' => ['self' => true],
@@ -45,7 +46,7 @@ final class SecurityHeaders implements MiddlewareInterface
         }
         if (StaffArea::isStaffPath($request->getUri()->getPath())) {
             $response = $response->withHeader('Cache-Control', 'no-store');
-        } elseif (!$response->hasHeader('Cache-Control') && in_array($request->getMethod(), ['GET', 'HEAD'], true) && $response->getStatusCode() < 500) {
+        } elseif (!$response->hasHeader('Cache-Control') && in_array($request->getMethod(), ['GET', 'HEAD'], true) && $status < 500) {
             // публичная страница без cookie: браузер — минута, общий кэш (CDN) — пять минут после публикации
             $response = $response->withHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
         }
