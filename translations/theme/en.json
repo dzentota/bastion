@@ -76,5 +76,11 @@
     "decision_accepted": "accepted",
     "decision_mitigated": "mitigated",
     "decision_deferred": "deferred",
-    "tm_dfd_full": "Open the full-size diagram"
+    "tm_dfd_full": "Open the full-size diagram",
+    "search_title": "Search",
+    "search_label": "Search this site",
+    "search_placeholder": "Search",
+    "search_button": "Search",
+    "search_nothing": "Nothing found. Try fewer or shorter words.",
+    "search_too_long": "The query is too long; use up to 200 characters."
 }

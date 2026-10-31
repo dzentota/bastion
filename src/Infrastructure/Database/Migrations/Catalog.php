@@ -26,6 +26,7 @@ final class Catalog
             new M0003AccountLocale(),
             new M0004EntryRevisions(),
             new M0005PageTree(),
+            new M0006SearchIndex(),
         ];
     }
 }

@@ -143,3 +143,15 @@ svg.dfd { width: 100%; height: auto; font-family: var(--font); font-size: 13px; 
 .dfd-flow text { fill: var(--ink); font-size: 10px; text-anchor: middle; font-weight: 600; }
 .tm-flows caption { text-align: left; font-weight: 600; margin-bottom: var(--space-2); }
 .tm-matrix td:last-child, .tm-findings td:first-child { white-space: nowrap; }
+
+/* search */
+header.site .search { margin-left: auto; }
+header.site .search input { margin: 0; width: 12rem; padding: 0.35rem 0.6rem; }
+header.site .search + .languages { margin-left: 0; }
+.search-page { display: flex; gap: var(--space-2); margin-bottom: var(--space-5); }
+.search-page input { margin: 0; }
+.search-results { padding-left: var(--space-5); }
+.search-results li { margin-bottom: var(--space-4); }
+.search-results p { margin: var(--space-1) 0 0; color: var(--ink-soft); }
+mark { background: var(--brass-wash); color: var(--ink); padding: 0 0.1em; }
+@media (max-width: 52rem) { header.site .search { margin-left: 0; order: 3; flex-basis: 100%; } header.site .search input { width: 100%; } }

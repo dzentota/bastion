@@ -115,6 +115,7 @@ foreach ([
     'i18n',
     'revisions',
     'structure',
+    'search',
 ] as $context) {
     (require __DIR__ . "/threat-model/{$context}.php")($model);
 }

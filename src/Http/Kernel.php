@@ -22,7 +22,7 @@ use Bastion\Taxonomy\Infrastructure\TermRepository;
 use Bastion\Updates\Application\{UpdateChannel, UpdateConfig, UpdateTransport};
 use Bastion\Updates\Infrastructure\{HttpUpdateTransport, LedgerStore};
 use Bastion\Extensions\Infrastructure\{ExtensionRegistry, PublishedContentReader};
-use Bastion\Http\Controller\{AuditController, DatabaseController, MenuController, PreferencesController, ThreatController, AuthController, ExtensionController, PasswordResetController, CommentController, EntryController, TermController, InstallController, MediaController, PublicController};
+use Bastion\Http\Controller\{AuditController, DatabaseController, MenuController, PreferencesController, SearchController, ThreatController, AuthController, ExtensionController, PasswordResetController, CommentController, EntryController, TermController, InstallController, MediaController, PublicController};
 use dzentota\Router\Middleware\HoneypotMiddleware;
 use Bastion\Media\Application\{MediaSanitizer, UploadMedia, UploadPolicy};
 use Bastion\Media\Domain\{MediaId, MediaStorage};
@@ -33,6 +33,8 @@ use Bastion\IdentityAccess\Application\{PasswordVerifier, TwoStepLogin};
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
 use Bastion\Infrastructure\Database\{Connection, Tables};
 use Bastion\Shared\I18n\StringCatalog;
+use Bastion\Search\Domain\SearchIndex;
+use Bastion\Search\Infrastructure\{MysqlSearchIndex, SqliteSearchIndex};
 use Bastion\ThreatModel\Infrastructure\ThreatModelSource;
 use Bastion\ThreatModel\Rendering\ThreatModelViews;
 use Bastion\Infrastructure\Database\Migrations\{Catalog, DatabaseBackup, Migrator};
@@ -313,7 +315,14 @@ final class Kernel
             AuthController::class => factory(fn (ContainerInterface $c) => new AuthController(self::get($c, TwoStepLogin::class), self::get($c, View::class))),
             EntryController::class => factory(fn (ContainerInterface $c) => new EntryController(self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, MediaRepository::class), self::get($c, AuditTrail::class), self::get($c, TermRepository::class), self::get($c, SecurityPosture::class), self::get($c, MenuRepository::class), self::get($c, SiteLanguages::class),
                 self::get($c, RevisionRepository::class), self::get($c, AccountRepository::class),
-                self::get($c, PreviewTokens::class), self::get($c, PublicController::class), self::get($c, PageTree::class))),
+                self::get($c, PreviewTokens::class), self::get($c, PublicController::class), self::get($c, PageTree::class),
+                self::get($c, SearchIndex::class))),
+            SearchIndex::class => factory(fn (ContainerInterface $c) => self::driver(self::get($c, Db::class)) === 'mysql'
+                ? new MysqlSearchIndex(self::get($c, Db::class)) : new SqliteSearchIndex(self::get($c, Db::class))),
+            SearchController::class => factory(fn (ContainerInterface $c) => new SearchController(
+                self::get($c, SearchIndex::class), self::get($c, SiteContext::class), self::get($c, View::class),
+                self::get($c, PublicController::class), self::get($c, TrustedHtmlToken::class),
+            )),
             MenuController::class => factory(fn (ContainerInterface $c) => new MenuController(
                 self::get($c, MenuRepository::class), self::get($c, SiteLanguages::class), self::get($c, View::class),
                 self::get($c, AppSensor::class), self::get($c, AuditTrail::class),
@@ -427,6 +436,7 @@ final class Kernel
         $router->get('/tag/{slug}', [TermController::class, 'movedTag'])->where(['slug' => Slug::class]);
         $router->get('/{lang}', [PublicController::class, 'first'])->where(['lang' => Slug::class]);
         $router->get('/{lang}/{slug}', [PublicController::class, 'show'])->where(['lang' => Slug::class, 'slug' => Slug::class]);
+        $router->get('/{lang}/search', [SearchController::class, 'search'])->where(['lang' => Slug::class]);
         $router->get('/{lang}/threats', [ThreatController::class, 'index'])->where(['lang' => Slug::class]);
         $router->get('/{lang}/threats/{slug}', [ThreatController::class, 'story'])->where(['lang' => Slug::class, 'slug' => Slug::class]);
         $router->get('/{lang}/category/{slug}', [TermController::class, 'category'])->where(['lang' => Slug::class, 'slug' => Slug::class]);

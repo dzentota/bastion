@@ -29,7 +29,7 @@ final class EntryController
 {
     private const EDITOR_ROWS = 12;
     /** Первые сегменты путей, занятые маршрутами: запись с таким слагом была бы недостижима или маскировалась под систему. */
-    private const RESERVED_SLUGS = ['admin', 'category', 'tag', 'media', 'comments', 'install', 'assets', 'login', 'feed', 'threats'];
+    private const RESERVED_SLUGS = ['admin', 'category', 'tag', 'media', 'comments', 'install', 'assets', 'login', 'feed', 'threats', 'search'];
 
     public function __construct(
         private readonly EntryRepository $entries,
@@ -47,6 +47,7 @@ final class EntryController
         private readonly PreviewTokens $previews,
         private readonly PublicController $public,
         private readonly \Bastion\Content\Infrastructure\PageTree $tree,
+        private readonly \Bastion\Search\Domain\SearchIndex $search,
     ) {
     }
 
@@ -139,6 +140,7 @@ final class EntryController
         $entry->publish($this->clock->now());
         $this->entries->save($entry);
         $this->revisions->markPublished($entry->id, $head->id);
+        $this->search->index($entry);
         $this->audit->record(AuditAction::EntryPublished, $this->account($request)->getId(), $entry->id->toNative(), $this->ip($request));
         return $this->view->redirect('/admin');
     }

@@ -58,6 +58,21 @@ final class MigratorTest extends TestCase
         $db->insert('?_entries', ['id' => 'e3', 'lang' => 'en', 'translation_group' => 'e3'] + $row);
     }
 
+    public function testSearchMigrationIndexesPublishedEntriesOnly(): void
+    {
+        $db = $this->db();
+        $before = array_values(array_filter(Catalog::all(), static fn (Migration $m) => $m->id() < '0006'));
+        $this->migrator($db, $before)->migrate(null, 'test');
+        $row = ['type' => 'page', 'lang' => 'en', 'translation_group' => 'g', 'slug' => 's', 'author_id' => 'a', 'published_at' => null, 'updated_at' => 'x', 'position' => 0];
+        $db->insert('?_entries', ['id' => 'p1', 'title' => 'Live', 'status' => 'published', 'slug' => 'live', 'blocks' => '[{"type":"paragraph","data":{"text":"findable words"}}]'] + $row);
+        $db->insert('?_entries', ['id' => 'd1', 'title' => 'Draft', 'status' => 'draft', 'slug' => 'draft', 'blocks' => '[{"type":"paragraph","data":{"text":"hidden words"}}]'] + $row);
+
+        $this->migrator($db, Catalog::all())->migrate(null, 'test');
+        $index = new \Bastion\Search\Infrastructure\SqliteSearchIndex($db);
+        $lang = \Bastion\Content\Domain\Language::fromNative('en');
+        self::assertSame(['p1'], array_map(static fn ($h) => $h->entryId, $index->search($lang, \Bastion\Search\Domain\SearchQuery::parse('words') ?? throw new \LogicException())));
+    }
+
     public function testDefaultLanguageDoesNotChangeTheChecksum(): void
     {
         self::assertSame(Migrator::checksum(new M0002EntryLanguages('en'), 'sqlite'), Migrator::checksum(new M0002EntryLanguages('ru'), 'sqlite'));

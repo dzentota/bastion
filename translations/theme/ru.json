@@ -76,5 +76,11 @@
     "decision_accepted": "риск принят",
     "decision_mitigated": "закрыта",
     "decision_deferred": "отложена",
-    "tm_dfd_full": "Открыть диаграмму в полный размер"
+    "tm_dfd_full": "Открыть диаграмму в полный размер",
+    "search_title": "Поиск",
+    "search_label": "Поиск по сайту",
+    "search_placeholder": "Поиск",
+    "search_button": "Найти",
+    "search_nothing": "Ничего не найдено. Попробуйте меньше слов или более короткие.",
+    "search_too_long": "Слишком длинный запрос: не больше 200 символов."
 }
