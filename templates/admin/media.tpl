@@ -1,5 +1,4 @@
 {% include "partials/head" %}
-<p><a href="/admin">← {{ t.content }}</a></p>
 <h1>{{ t.media_library }}</h1>
 {% if degraded %}<p class="warning" role="status"><strong>{{ t.reduced_security_mode }}</strong> {{ t.media_degraded_hint }}</p>{% endif %}
 {% include "partials/errors" %}

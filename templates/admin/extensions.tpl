@@ -1,5 +1,4 @@
 {% include "partials/head" %}
-<p><a href="/admin">← {{ t.content }}</a></p>
 <h1>{{ t.extensions }}</h1>
 {% include "partials/errors" %}
 {% if notice %}<p class="ok" role="status">{{ notice }}</p>{% endif %}

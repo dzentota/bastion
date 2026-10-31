@@ -56,6 +56,12 @@ final class View
                 $ctx['error'] = $this->catalog->message($ctx['error'], $lang);
             }
             $account = $request->getAttribute(RequireStaff::ACCOUNT);
+            if ($account instanceof Account) {
+                // оболочка админки: кто вошёл и какой раздел навигации текущий
+                $sections = ['content' => ['dashboard', 'editor', 'revisions', 'revision-diff'], 'media' => ['media'], 'comments' => ['comments'],
+                    'menu' => ['menu'], 'audit' => ['audit'], 'extensions' => ['extensions'], 'database' => ['database']];
+                $ctx['staff'] = ['name' => $account->username->toNative(), 'nav' => array_map(static fn (array $t) => in_array($template, $t, true), $sections)];
+            }
             $languages = $this->catalog->adminLanguages();
             $ctx['ui_languages'] = $account instanceof Account && count($languages) > 1
                 ? array_map(static fn (Language $l) => ['code' => $l->toNative(), 'current' => $l->toNative() === $lang->toNative()], $languages)

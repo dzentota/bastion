@@ -1,5 +1,4 @@
 {% include "partials/head" %}
-<p><a href="/admin">← {{ t.content }}</a></p>
 <h1>{{ t.site_menu }}</h1>
 {% if languages %}<p>{% each languages as l %}{% if l.current %}<strong>{{ l.code }}</strong>{% else %}<a href="/admin/menu?lang={{ l.code | attr }}">{{ l.code }}</a>{% endif %} {% endeach %}</p>{% endif %}
 <form method="post" action="/admin/menu" class="card">

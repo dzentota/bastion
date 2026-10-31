@@ -1,15 +1,11 @@
 {% include "partials/head" %}
-<header class="bar">
-  <strong>Bastion</strong>
-  <span>{{ t.signed_in_as }} {{ me.name }}</span>
-  {% if ui_languages %}<form method="post" action="/admin/locale" class="ui-lang"><input type="hidden" name="_token" value="{{ csrf | attr }}">{% each ui_languages as l %}{% if l.current %}<strong>{{ l.code }}</strong>{% else %}<button class="link" name="lang" value="{{ l.code | attr }}" lang="{{ l.code | attr }}">{{ l.code }}</button>{% endif %} {% endeach %}</form>{% endif %}
-  <form method="post" action="/admin/logout"><input type="hidden" name="_token" value="{{ csrf | attr }}"><button class="link">{{ t.sign_out }}</button></form>
-</header>
 {% each notices as n %}
 <div class="notice notice-{{ n.level | attr }}" role="status"><strong>{{ n.title }}</strong><p>{{ n.detail }}</p></div>
 {% endeach %}
-<h1>{{ t.content }}</h1>
-<p><a class="button" href="/admin/entries/new">{{ t.new_post }}</a> <a class="button" href="/admin/entries/new?type=page">{{ t.new_page }}</a> <a href="/admin/media">{{ t.media_library }}</a> · <a href="/admin/comments">{{ t.comments }}</a> · <a href="/admin/audit">{{ t.audit }}</a> · <a href="/admin/extensions">{{ t.extensions }}</a> · <a href="/admin/menu">{{ t.site_menu }}</a> · <a href="/admin/database">{{ t.database }}</a></p>
+<div class="page-head">
+  <h1>{{ t.content }}</h1>
+  <p class="actions"><a class="button" href="/admin/entries/new">{{ t.new_post }}</a> <a class="button secondary" href="/admin/entries/new?type=page">{{ t.new_page }}</a></p>
+</div>
 <table>
   <thead><tr><th>{{ t.title }}</th><th>{{ t.language }}</th><th>{{ t.type }}</th><th>{{ t.status }}</th><th></th></tr></thead>
   <tbody>

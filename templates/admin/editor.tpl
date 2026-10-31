@@ -1,5 +1,4 @@
 {% include "partials/head" %}
-<p><a href="/admin">← {{ t.all_content }}</a></p>
 <h1>{% if entry %}{% if is_page %}{{ t.edit_page }}{% else %}{{ t.edit_post }}{% endif %}{% else %}{% if is_page %}{{ t.new_page }}{% else %}{{ t.new_post }}{% endif %}{% endif %}</h1>
 {% include "partials/errors" %}
 <form method="post" action="{{ action | url }}" class="card">

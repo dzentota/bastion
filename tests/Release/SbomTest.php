@@ -59,4 +59,24 @@ final class SbomTest extends TestCase
         exec('rm -rf ' . escapeshellarg("{$this->vendor}/acme/lib"));
         self::assertStringContainsString('acme/lib: missing', implode("\n", Sbom::verify($sbom, $this->vendor, [])));
     }
+
+    public function testVendoredFontsAreListedAndVerified(): void
+    {
+        $root = sys_get_temp_dir() . '/bastion-sbom-assets-' . bin2hex(random_bytes(4));
+        mkdir($root . '/public/assets/fonts', 0777, true);
+        file_put_contents($root . '/public/assets/fonts/a.woff2', 'wOF2 font');
+        file_put_contents($root . '/public/assets/fonts/fonts.json', json_encode([[
+            'purl' => 'pkg:npm/%40fontsource/x@1.0.0', 'group' => '@fontsource', 'name' => 'x', 'version' => '1.0.0',
+            'license' => 'OFL-1.1', 'source' => 'https://example.invalid/', 'files' => ['a.woff2'],
+        ]]));
+        $sbom = Sbom::generate($this->lock, $this->vendor, '1.0.0', 0, $root);
+        $font = array_values(array_filter($sbom['components'], static fn (array $c) => $c['name'] === 'x'))[0];
+        self::assertSame('pkg:npm/%40fontsource/x@1.0.0', $font['purl']);
+        self::assertSame([], Sbom::verify($sbom, $this->vendor, ['acme/lib', 'acme/branchy'], $root));
+
+        file_put_contents($root . '/public/assets/fonts/a.woff2', 'tampered');
+        self::assertStringContainsString('@fontsource/x: asset files differ', implode("\n", Sbom::verify($sbom, $this->vendor, [], $root)));
+        unlink($root . '/public/assets/fonts/a.woff2');
+        self::assertStringContainsString('@fontsource/x: asset files differ', implode("\n", Sbom::verify($sbom, $this->vendor, [], $root)));
+    }
 }

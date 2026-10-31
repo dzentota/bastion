@@ -28,7 +28,7 @@ switch ($cmd) {
     case 'generate':
         $lock = json_decode((string) file_get_contents($root . '/composer.lock'), true, 64, JSON_THROW_ON_ERROR);
         $epoch = getenv('SOURCE_DATE_EPOCH');
-        $sbom = Sbom::generate($lock, $root . '/vendor', $opts['version'] ?? 'dev', is_string($epoch) && ctype_digit($epoch) ? (int) $epoch : time());
+        $sbom = Sbom::generate($lock, $root . '/vendor', $opts['version'] ?? 'dev', is_string($epoch) && ctype_digit($epoch) ? (int) $epoch : time(), $root);
         $out = $opts['out'] ?? $default;
         if (!is_dir(dirname($out))) {
             mkdir(dirname($out), 0755, true);
@@ -43,11 +43,11 @@ switch ($cmd) {
         $installed = json_decode((string) file_get_contents($root . '/vendor/composer/installed.json'), true, 64, JSON_THROW_ON_ERROR);
         $dev = $installed['dev-package-names'] ?? [];
         $runtime = array_values(array_diff(array_column($installed['packages'] ?? [], 'name'), $dev));
-        $problems = Sbom::verify($sbom, $root . '/vendor', $runtime);
+        $problems = Sbom::verify($sbom, $root . '/vendor', $runtime, $root);
         foreach ($problems as $p) {
             fwrite(STDERR, $p . "\n");
         }
-        echo $problems === [] ? "OK: vendor/ matches the SBOM.\n" : '';
+        echo $problems === [] ? "OK: vendor/ and vendored assets match the SBOM.\n" : '';
         exit($problems === [] ? 0 : 2);
     default:
         echo "Usage:\n  bin/sbom generate [--version=X] [--out=FILE]\n  bin/sbom verify [FILE]\n";

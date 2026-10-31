@@ -189,5 +189,7 @@
     "menu_hidden_draft": "draft, not shown",
     "menu_empty": "The menu is empty.",
     "menu_add": "Add page",
-    "menu_full": "The menu is full (10 items)."
+    "menu_full": "The menu is full (10 items).",
+    "skip_to_content": "Skip to content",
+    "admin_nav": "Admin sections"
 }

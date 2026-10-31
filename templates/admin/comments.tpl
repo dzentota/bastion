@@ -1,5 +1,4 @@
 {% include "partials/head" %}
-<p><a href="/admin">← {{ t.content }}</a></p>
 <h1>{{ t.comments_awaiting }}</h1>
 {% each items as c %}
 <div class="card">

@@ -50,6 +50,13 @@ final class PublicController
         return $out;
     }
 
+    /** @return list<array{id: string, text: string}> оглавление показывается от трёх заголовков */
+    private function outline(Entry $entry): array
+    {
+        $outline = BlockHtmlRenderer::outline($entry->blocks());
+        return count($outline) >= 3 ? $outline : [];
+    }
+
     /** @return array<string, mixed> навигация страницы по дереву: крошки, раздел, дети */
     private function treeContext(Entry $entry): array
     {
@@ -112,7 +119,7 @@ final class PublicController
     {
         return $this->view->theme('entry', [
             'site' => $this->site->for($entry->lang, $this->entries->translations($entry->translationGroup)),
-            'entry' => $this->summary($entry) + ['body' => $this->blocks->render($entry->blocks())] + $this->termLinks($entry),
+            'entry' => $this->summary($entry) + ['body' => $this->blocks->render($entry->blocks()), 'outline' => $this->outline($entry)] + $this->termLinks($entry),
             'tree' => $this->treeContext($entry),
             'comments_open' => $entry->type->inFeed(),
             'comments' => !$entry->type->inFeed() ? [] : array_map(static fn (Comment $c) => [
@@ -155,7 +162,7 @@ final class PublicController
         $res = $this->view->theme('entry', [
             'site' => $this->site->for($transient->lang),
             'preview' => true,
-            'entry' => $this->summary($transient) + ['body' => $this->blocks->render($transient->blocks())] + $this->termLinks($transient),
+            'entry' => $this->summary($transient) + ['body' => $this->blocks->render($transient->blocks()), 'outline' => $this->outline($transient)] + $this->termLinks($transient),
             'tree' => $this->treeContext($transient),
             'comments_open' => false,
             'comments' => [],

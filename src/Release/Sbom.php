@@ -9,13 +9,20 @@ namespace Bastion\Release;
  * тот же файл служит проверкой целостности поставленного релиза (verify).
  * Вывод детерминирован: время — из SOURCE_DATE_EPOCH, серийный номер выводится из содержимого.
  */
+#[\HybridTM\Attributes\AssetId('app-filesystem')]
+#[\HybridTM\Attributes\AbuserStory('vendored-asset-tamper')]
+#[\HybridTM\Attributes\Mitigation(cwe: 'CWE-494', description: 'Vendored fonts are pinned to an exact package version, self-hosted (no third-party requests) and listed in the SBOM with a SHA-256 over their files; bin/sbom verify detects a swapped or missing file')]
 final class Sbom
 {
+    /** Вендорные статические ресурсы (шрифты): манифест рядом с файлами, путь от корня релиза. */
+    public const ASSET_MANIFESTS = ['public/assets/fonts/fonts.json'];
+
     /**
      * @param array<string, mixed> $lock разобранный composer.lock
+     * @param string|null $root корень релиза: если задан, в SBOM попадают и ресурсы из ASSET_MANIFESTS
      * @return array<string, mixed>
      */
-    public static function generate(array $lock, string $vendorDir, string $appVersion, int $timestamp): array
+    public static function generate(array $lock, string $vendorDir, string $appVersion, int $timestamp, ?string $root = null): array
     {
         $packages = array_map(self::package(...), is_array($lock['packages'] ?? null) ? array_values($lock['packages']) : []);
         $refs = [];
@@ -56,6 +63,16 @@ final class Sbom
             $components[] = $c;
             $dependencies[] = ['ref' => $refs[$p['name']], 'dependsOn' => array_values(array_intersect_key($refs, array_flip($p['requires'])))];
         }
+        foreach ($root !== null ? self::assets($root) : [] as $a) {
+            $components[] = [
+                'type' => 'library', 'bom-ref' => $a['purl'], 'group' => $a['group'], 'name' => $a['name'], 'version' => $a['version'],
+                'purl' => $a['purl'], 'licenses' => [['license' => ['id' => $a['license']]]],
+                'hashes' => [['alg' => 'SHA-256', 'content' => self::filesHash($root . '/' . $a['path'], $a['files']) ?? '']],
+                'externalReferences' => [['type' => 'distribution', 'url' => $a['source']]],
+                'properties' => [['name' => 'bastion:asset-path', 'value' => $a['path']], ['name' => 'bastion:asset-files', 'value' => implode(',', $a['files'])]],
+            ];
+            $dependencies[0]['dependsOn'][] = $a['purl'];
+        }
         $contentHash = is_string($lock['content-hash'] ?? null) ? $lock['content-hash'] : '';
         return [
             'bomFormat' => 'CycloneDX',
@@ -80,7 +97,7 @@ final class Sbom
      * @param list<string> $installedRuntime имена из vendor/composer/installed.json без dev-пакетов
      * @return list<string> проблемы; пусто — дерево совпадает
      */
-    public static function verify(array $sbom, string $vendorDir, array $installedRuntime): array
+    public static function verify(array $sbom, string $vendorDir, array $installedRuntime, ?string $root = null): array
     {
         if (($sbom['bomFormat'] ?? null) !== 'CycloneDX' || !is_array($sbom['components'] ?? null)) {
             return ['Not a CycloneDX SBOM'];
@@ -100,6 +117,15 @@ final class Sbom
                 $problems[] = "{$name}: no hash in SBOM";
                 continue;
             }
+            $asset = self::assetProperties($c);
+            if ($asset !== null) {
+                // ресурс (шрифт) — не пакет vendor/
+                $actual = $root !== null ? self::filesHash($root . '/' . $asset[0], $asset[1]) : null;
+                if ($actual === null || !hash_equals($expected, $actual)) {
+                    $problems[] = "{$name}: asset files differ from the release";
+                }
+                continue;
+            }
             $actual = self::treeHash($vendorDir . '/' . $name);
             if ($actual === null) {
                 $problems[] = "{$name}: missing from vendor/";
@@ -111,6 +137,62 @@ final class Sbom
             $problems[] = "{$extra}: installed but not in SBOM";
         }
         return $problems;
+    }
+
+    /**
+     * Хэш набора файлов каталога в том же формате, что treeHash. Лишние файлы в каталоге не учитываются,
+     * отсутствующий или символическая ссылка — null.
+     * @param list<string> $files
+     */
+    public static function filesHash(string $dir, array $files): ?string
+    {
+        $lines = [];
+        foreach ($files as $f) {
+            $path = $dir . '/' . $f;
+            if (!preg_match('/^[A-Za-z0-9._-]+$/', $f) || !is_file($path) || is_link($path)) {
+                return null;
+            }
+            $lines[] = $f . "\0" . (string) hash_file('sha256', $path);
+        }
+        sort($lines, SORT_STRING);
+        return hash('sha256', implode("\n", $lines));
+    }
+
+    /** @return list<array{purl: string, group: string, name: string, version: string, license: string, source: string, path: string, files: list<string>}> */
+    private static function assets(string $root): array
+    {
+        $out = [];
+        foreach (self::ASSET_MANIFESTS as $manifest) {
+            $data = json_decode((string) file_get_contents($root . '/' . $manifest), true, 4, JSON_THROW_ON_ERROR);
+            foreach (is_array($data) ? $data : [] as $a) {
+                if (!is_array($a)) {
+                    continue;
+                }
+                $s = static fn (string $k): string => is_string($a[$k] ?? null) ? $a[$k] : throw new \UnexpectedValueException("{$manifest}: {$k}");
+                $files = array_values(array_filter(is_array($a['files'] ?? null) ? $a['files'] : [], 'is_string'));
+                $out[] = ['purl' => $s('purl'), 'group' => $s('group'), 'name' => $s('name'), 'version' => $s('version'), 'license' => $s('license'),
+                    'source' => $s('source'), 'path' => dirname($manifest), 'files' => $files];
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * @param array<mixed> $c
+     * @return array{0: string, 1: list<string>}|null
+     */
+    private static function assetProperties(array $c): ?array
+    {
+        $path = $files = null;
+        foreach (is_array($c['properties'] ?? null) ? $c['properties'] : [] as $p) {
+            if (is_array($p) && ($p['name'] ?? null) === 'bastion:asset-path' && is_string($p['value'] ?? null)) {
+                $path = $p['value'];
+            }
+            if (is_array($p) && ($p['name'] ?? null) === 'bastion:asset-files' && is_string($p['value'] ?? null)) {
+                $files = explode(',', $p['value']);
+            }
+        }
+        return $path !== null && $files !== null && !str_contains($path, '..') ? [$path, $files] : null;
     }
 
     /** SHA-256 над отсортированным списком «путь\0sha256(файла)»; ссылки учитываются как ссылки. */

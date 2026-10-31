@@ -1,9 +1,17 @@
 {% include "partials/head" %}
-{% if tree.section %}<nav class="section" aria-label="{{ t.section_nav | attr }}">
-  <a href="{{ tree.section.root.url | url }}"{% if tree.section.root.current %} aria-current="page"{% endif %}>{{ tree.section.root.title }}</a>
-  <ul>{% each tree.section.items as s %}<li class="depth-{{ s.depth | attr }}"><a href="{{ s.url | url }}"{% if s.current %} aria-current="page"{% endif %}>{{ s.title }}</a></li>{% endeach %}</ul>
+<div class="doc{% if tree.section %} has-section{% endif %}{% if entry.outline %} has-outline{% endif %}">
+{% if tree.section %}<details class="section" open>
+  <summary>{{ t.section_nav }}</summary>
+  <nav aria-label="{{ t.section_nav | attr }}">
+    <a href="{{ tree.section.root.url | url }}"{% if tree.section.root.current %} aria-current="page"{% endif %}>{{ tree.section.root.title }}</a>
+    <ul>{% each tree.section.items as s %}<li class="depth-{{ s.depth | attr }}"><a href="{{ s.url | url }}"{% if s.current %} aria-current="page"{% endif %}>{{ s.title }}</a></li>{% endeach %}</ul>
+  </nav>
+</details>{% endif %}
+{% if entry.outline %}<nav class="outline" aria-label="{{ t.on_this_page | attr }}">
+  <p>{{ t.on_this_page }}</p>
+  <ul>{% each entry.outline as o %}<li><a href="#{{ o.id | attr }}">{{ o.text }}</a></li>{% endeach %}</ul>
 </nav>{% endif %}
-<article>
+<article class="prose">
   {% if tree.breadcrumbs %}<nav class="breadcrumbs" aria-label="{{ t.breadcrumbs | attr }}">{% each tree.breadcrumbs as b %}<a href="{{ b.url | url }}">{{ b.title }}</a> › {% endeach %}</nav>{% endif %}
   <h1>{{ entry.title }}</h1>
   {% if comments_open %}<time>{{ entry.date }}</time>{% endif %}
@@ -12,6 +20,7 @@
   {% if entry.categories %}<p class="terms">{{ t.categories_label }} {% each entry.categories as term %}<a href="{{ term.url | url }}">{{ term.name }}</a> {% endeach %}</p>{% endif %}
   {% if entry.tags %}<p class="terms">{{ t.tags_label }} {% each entry.tags as term %}<a href="{{ term.url | url }}">#{{ term.name }}</a> {% endeach %}</p>{% endif %}
 </article>
+</div>
 {% if comments_open %}
 <section class="comments" id="comments">
   <h2>{{ t.comments }}</h2>

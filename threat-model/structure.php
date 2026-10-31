@@ -39,4 +39,13 @@ return static function (ThreatModel $model): void {
     $s->assetIds = ['bastion-app'];
     $s->requiredCwes = ['CWE-285', 'CWE-20'];
     $model->addAbuseCase($s);
+
+    $s = new AbuseCase('vendored-asset-tamper', 'Swap a vendored font or stylesheet');
+    $s->asA = 'supply-chain attacker or attacker with file write on the hosting';
+    $s->iWant = 'replace a self-hosted font file with a malformed one, or load fonts from a third-party CDN';
+    $s->soThat = 'exploit a font parser in visitors\' browsers, or track visitors through third-party requests';
+    $s->actorId = 'malicious-publisher';
+    $s->assetIds = ['app-filesystem'];
+    $s->requiredCwes = ['CWE-494'];
+    $model->addAbuseCase($s);
 };

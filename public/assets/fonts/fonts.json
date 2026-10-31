@@ -1,0 +1,20 @@
+[
+    {
+        "purl": "pkg:npm/%40fontsource/golos-text@5.2.8",
+        "group": "@fontsource",
+        "name": "golos-text",
+        "version": "5.2.8",
+        "license": "OFL-1.1",
+        "source": "https://cdn.jsdelivr.net/npm/@fontsource/golos-text@5.2.8/files/",
+        "files": ["golos-text-latin-400-normal.woff2", "golos-text-latin-600-normal.woff2", "golos-text-cyrillic-400-normal.woff2", "golos-text-cyrillic-600-normal.woff2", "OFL-golos-text.txt"]
+    },
+    {
+        "purl": "pkg:npm/%40fontsource/jetbrains-mono@5.2.8",
+        "group": "@fontsource",
+        "name": "jetbrains-mono",
+        "version": "5.2.8",
+        "license": "OFL-1.1",
+        "source": "https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.2.8/files/",
+        "files": ["jetbrains-mono-latin-400-normal.woff2", "jetbrains-mono-cyrillic-400-normal.woff2", "OFL-jetbrains-mono.txt"]
+    }
+]

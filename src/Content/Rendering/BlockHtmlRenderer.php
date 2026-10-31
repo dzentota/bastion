@@ -23,10 +23,28 @@ final class BlockHtmlRenderer
     public function render(BlockList $blocks): SafeHtml
     {
         $html = '';
+        $n = 0;
         foreach ($blocks as $block) {
-            $html .= $this->block($block);
+            $html .= $block instanceof Heading
+                ? sprintf('<h%1$d id="s%3$d">%2$s</h%1$d>', $block->level, $this->esc($block->text->toNative()), ++$n)
+                : $this->block($block);
         }
         return new SafeHtml($html, $this->token);
+    }
+
+    /**
+     * Оглавление «На этой странице»: те же якоря, что ставит render() (s1, s2, … по порядку).
+     * @return list<array{id: string, text: string}>
+     */
+    public static function outline(BlockList $blocks): array
+    {
+        $out = [];
+        foreach ($blocks as $block) {
+            if ($block instanceof Heading) {
+                $out[] = ['id' => 's' . (count($out) + 1), 'text' => $block->text->toNative()];
+            }
+        }
+        return $out;
     }
 
     private function block(Block $block): string
