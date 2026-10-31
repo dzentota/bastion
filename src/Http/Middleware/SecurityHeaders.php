@@ -43,8 +43,11 @@ final class SecurityHeaders implements MiddlewareInterface
         if ($this->https) {
             $response = $response->withHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
-        if (str_starts_with($request->getUri()->getPath(), '/admin') || str_starts_with($request->getUri()->getPath(), '/install')) {
+        if (StaffArea::isStaffPath($request->getUri()->getPath())) {
             $response = $response->withHeader('Cache-Control', 'no-store');
+        } elseif (!$response->hasHeader('Cache-Control') && in_array($request->getMethod(), ['GET', 'HEAD'], true) && $response->getStatusCode() < 500) {
+            // публичная страница без cookie: браузер — минута, общий кэш (CDN) — пять минут после публикации
+            $response = $response->withHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
         }
         return $response->withoutHeader('X-Powered-By');
     }

@@ -28,7 +28,7 @@ use Bastion\Media\Application\{MediaSanitizer, UploadMedia, UploadPolicy};
 use Bastion\Media\Domain\{MediaId, MediaStorage};
 use Bastion\Media\Infrastructure\{LocalMediaStorage, MediaRepository, S3Config, S3MediaStorage};
 use Dzentota\HttpClient\HttpClient;
-use Bastion\Http\Middleware\{AppSensorGate, ErrorHandler, InstallGuard, MaintenanceMode, RequireStaff, SecurityHeaders, SessionCsrfStrategy};
+use Bastion\Http\Middleware\{AppSensorGate, ErrorHandler, InstallGuard, MaintenanceMode, RequireStaff, StaffArea, SecurityHeaders, SessionCsrfStrategy};
 use Bastion\IdentityAccess\Application\{PasswordVerifier, TwoStepLogin};
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
 use Bastion\Infrastructure\Database\{Connection, Tables};
@@ -377,7 +377,7 @@ final class Kernel
         $storage = new DatabaseStorage($db->getPdo(), Tables::SESSIONS, [$encryptor, 'encrypt'], [$encryptor, 'decrypt']);
         $router->middleware(
             new AppSensorGate(self::get($c, AppSensor::class), $responses),
-            ...self::sessionAndCsrf($storage, $c, $devCookies, self::get($c, AppSensor::class)),
+            new StaffArea(self::sessionAndCsrf($storage, $c, $devCookies, self::get($c, AppSensor::class)), $responses),
         );
         // ADR-0018: схему меняет только админ на /admin/database (или CLI), не обычный запрос.
         $router->middleware(new MaintenanceMode(self::get($c, Migrator::class), $responses));
