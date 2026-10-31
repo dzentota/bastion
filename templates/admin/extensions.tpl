@@ -1,5 +1,5 @@
 {% include "partials/head" %}
-<p><a href="/admin">← Posts</a></p>
+<p><a href="/admin">← Content</a></p>
 <h1>Extensions</h1>
 {% include "partials/errors" %}
 {% if notice %}<p class="ok" role="status">{{ notice }}</p>{% endif %}

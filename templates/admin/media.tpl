@@ -1,5 +1,5 @@
 {% include "partials/head" %}
-<p><a href="/admin">← Posts</a></p>
+<p><a href="/admin">← Content</a></p>
 <h1>Media library</h1>
 {% if degraded %}<p class="warning" role="status"><strong>Reduced security mode:</strong> files are stored on this server. Connect S3-compatible storage (Cloudflare R2, Backblaze B2, AWS S3) to keep uploads away from your site's code.</p>{% endif %}
 {% include "partials/errors" %}

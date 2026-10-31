@@ -194,6 +194,7 @@ final class Kernel
             AuditTrail::class => get(HmacAuditTrail::class),
             AuditController::class => factory(fn (ContainerInterface $c) => new AuditController(
                 self::get($c, HmacAuditTrail::class), self::get($c, View::class), self::get($c, AppSensor::class),
+                self::get($c, AccountRepository::class), self::get($c, EntryRepository::class),
             )),
             MediaRepository::class => factory(fn (ContainerInterface $c) => new MediaRepository(self::get($c, Db::class))),
             UploadPolicy::class => create(UploadPolicy::class),

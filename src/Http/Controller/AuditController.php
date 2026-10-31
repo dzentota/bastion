@@ -5,6 +5,9 @@ namespace Bastion\Http\Controller;
 
 use Bastion\Audit\Domain\AuditEntry;
 use Bastion\Audit\Infrastructure\HmacAuditTrail;
+use Bastion\Content\Domain\EntryId;
+use Bastion\Content\Infrastructure\EntryRepository;
+use Bastion\IdentityAccess\Infrastructure\AccountRepository;
 use Bastion\Http\Middleware\RequireStaff;
 use Bastion\Http\View;
 use Bastion\IdentityAccess\Domain\{Account, Capability};
@@ -21,8 +24,13 @@ use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
 #[Mitigation(cwe: 'CWE-284', description: 'Audit trail is append-only by API: no delete/update methods or routes; viewing requires security.view (Admin)')]
 final class AuditController
 {
-    public function __construct(private readonly HmacAuditTrail $trail, private readonly View $view, private readonly AppSensor $sensor)
-    {
+    public function __construct(
+        private readonly HmacAuditTrail $trail,
+        private readonly View $view,
+        private readonly AppSensor $sensor,
+        private readonly AccountRepository $accounts,
+        private readonly EntryRepository $entries,
+    ) {
     }
 
     public function index(ServerRequestInterface $request): ResponseInterface
@@ -39,10 +47,30 @@ final class AuditController
             'intact' => $verification->intact,
             'reason' => $verification->reason,
             'count' => (string) $verification->entries,
-            'entries' => array_map(static fn (AuditEntry $e) => [
+            'entries' => array_map(fn (AuditEntry $e) => [
                 'seq' => (string) $e->seq, 'at' => gmdate('Y-m-d H:i:s', $e->at) . ' UTC', 'action' => $e->action->value,
-                'actor' => $e->actor ?? '—', 'subject' => $e->subject ?? '—', 'ip' => $e->ip,
+                'actor' => $e->actor ?? '—', 'actor_name' => $this->actorName($e->actor),
+                'subject' => $e->subject ?? '—', 'subject_name' => $this->subjectName($e->subject), 'ip' => $e->ip,
             ], $this->trail->latest(200)),
         ]);
     }
+
+    /** Подписи только для чтения; сам журнал хранит неизменяемые id. */
+    private function actorName(?string $id): ?string
+    {
+        return $id === null ? null : ($this->names[$id] ??= $this->accounts->find($id)?->username->toNative());
+    }
+
+    private function subjectName(?string $id): ?string
+    {
+        if ($id === null || !EntryId::tryParse($id, $entryId)) {
+            return null;
+        }
+        return $this->titles[$id] ??= $this->entries->find($entryId)?->title()->toNative();
+    }
+
+    /** @var array<string, ?string> */
+    private array $names = [];
+    /** @var array<string, ?string> */
+    private array $titles = [];
 }

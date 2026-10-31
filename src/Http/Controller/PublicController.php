@@ -12,7 +12,7 @@ use Bastion\Content\Rendering\BlockHtmlRenderer;
 use Bastion\Http\View;
 use Bastion\Taxonomy\Domain\{Term, TermKind};
 use Bastion\Taxonomy\Infrastructure\TermRepository;
-use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
 
 final class PublicController
 {
@@ -34,13 +34,14 @@ final class PublicController
         ]);
     }
 
-    public function show(Slug $slug): ResponseInterface
+    public function show(ServerRequestInterface $request, Slug $slug): ResponseInterface
     {
         $entry = $this->entries->findPublishedBySlug($slug);
         if ($entry === null) {
             return $this->view->theme('not-found', ['site' => ['name' => 'Bastion']], 404);
         }
-        return $this->render($entry, [], 200);
+        // только флаг: текст уведомления задан шаблоном
+        return $this->render($entry, ($request->getQueryParams()['comment'] ?? null) === 'sent' ? ['sent' => true] : [], 200);
     }
 
     /** @param array<string, mixed> $form состояние формы комментария (ошибка, введённые значения, "отправлено") */

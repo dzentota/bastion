@@ -35,8 +35,8 @@ final class View
 
     public function redirect(string $path): ResponseInterface
     {
-        // только локальные пути — нет open redirect
-        if (!preg_match('~^/(?!/)[A-Za-z0-9/_-]*$~', $path)) {
+        // только локальные пути (плюс простая query-строка key=value) — нет open redirect
+        if (!preg_match('~^/(?!/)[A-Za-z0-9/_-]*(\?[a-z_]+=[a-z0-9_-]+)?$~', $path)) {
             $path = '/';
         }
         return $this->responses->createResponse(303)->withHeader('Location', $path);

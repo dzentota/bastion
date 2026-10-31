@@ -99,7 +99,8 @@ final class InstallController
 
         if ($errors === [] && $username !== null && $password !== null && $email !== null && $site !== null) {
             try {
-                $this->installer->install($db, $username, $password, $email, $site, $s3, $smtp);
+                $ip = $request->getServerParams()['REMOTE_ADDR'] ?? null;
+                $this->installer->install($db, $username, $password, $email, $site, $s3, $smtp, is_string($ip) ? $ip : 'unknown');
                 return $this->view->redirect('/admin/login');
             } catch (\PDOException) {
                 $errors[] = 'Cannot connect to the database with these settings';

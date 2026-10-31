@@ -1,9 +1,10 @@
 {% include "partials/head" %}
-<p><a href="/admin">← Posts</a></p>
+<p><a href="/admin">← Content</a></p>
 <h1>Comments awaiting moderation</h1>
 {% each items as c %}
 <div class="card">
   <p><strong>{{ c.author }}</strong> · {{ c.date }}{% if c.links %} · <span class="warning-inline">contains links</span>{% endif %}</p>
+  {% if c.entry %}<p class="hint">On <a href="{{ c.entry.url | url }}">{{ c.entry.title }}</a></p>{% endif %}
   <p>{% each c.lines as line %}{{ line }}<br>{% endeach %}</p>
   <div class="actions">
     <form method="post" action="/admin/comments/{{ c.id | attr }}/approve"><input type="hidden" name="_token" value="{{ csrf | attr }}"><button>Approve</button></form>

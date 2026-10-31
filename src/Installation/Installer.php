@@ -51,7 +51,7 @@ final class Installer
      * @param array{driver: DbDriver, host?: DbHost, port?: int, name?: DbName, user?: DbName, password?: string} $db
      * @param array{host: string, port: int, user: string, password: string, from: string}|null $smtp
      */
-    public function install(array $db, Username $admin, NewPassword $password, StaffEmail $email, SiteUrl $site, ?S3Config $s3 = null, ?array $smtp = null): void
+    public function install(array $db, Username $admin, NewPassword $password, StaffEmail $email, SiteUrl $site, ?S3Config $s3 = null, ?array $smtp = null, string $ip = 'unknown'): void
     {
         if ($this->paths->isInstalled()) {
             throw new \LogicException('Already installed');
@@ -92,7 +92,7 @@ final class Installer
         }
         $owner = $accounts->create($admin, $password, Role::Admin, $email);
         (new HmacAuditTrail($conn, hash_hmac('sha256', 'bastion:audit', (string) file_get_contents($this->paths->cacheKey()), true), $this->paths->auditAnchor(), new SystemClock()))
-            ->record(AuditAction::Installed, $owner->getId(), null, 'unknown');
+            ->record(AuditAction::Installed, $owner->getId(), null, $ip);
 
         $this->writeSecret($this->paths->config(), json_encode($config, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
         $this->writeSecret($this->paths->installedLock(), gmdate('c') . "\n");

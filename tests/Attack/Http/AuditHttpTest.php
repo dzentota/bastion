@@ -31,7 +31,8 @@ final class AuditHttpTest extends TestCase
         foreach (['installed', 'login_succeeded', 'second_factor_enrolled', 'entry_created', 'entry_published', 'media_uploaded'] as $action) {
             self::assertStringContainsString($action, $page, $action);
         }
-        self::assertStringContainsString($m[1], $page, 'subject = id записи');
+        self::assertStringContainsString($m[1], $page, 'subject = id записи (в подсказке)');
+        self::assertMatchesRegularExpression('~<span title="[0-9a-f]+">owner</span>~', $page, 'актор показан по имени');
 
         $cli = 'BASTION_ROOT=' . escapeshellarg($h->paths->root) . ' ' . PHP_BINARY . ' ' . escapeshellarg(dirname(__DIR__, 3) . '/bin/bastion') . ' audit:verify 2>&1';
         exec($cli, $out, $code);

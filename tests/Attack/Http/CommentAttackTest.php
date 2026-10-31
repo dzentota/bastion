@@ -60,7 +60,10 @@ final class CommentAttackTest extends TestCase
     public function testCommentIsHeldForModerationAndRenderedInert(): void
     {
         $payload = "<script>alert(1)</script>\n<img src=x onerror=alert(2)>";
-        self::assertSame(200, $this->comment('Eve', $payload)->getStatusCode());
+        $res = $this->comment('Eve', $payload);
+        self::assertSame(303, $res->getStatusCode(), 'Post/Redirect/Get');
+        self::assertSame('/post?comment=sent', $res->getHeaderLine('Location'));
+        self::assertStringContainsString('after moderation', (string) $this->h->fresh()->get('/post?comment=sent')->getBody());
         self::assertStringNotContainsString('onerror', (string) $this->h->fresh()->get('/post')->getBody(), 'не опубликован до модерации');
 
         $this->h->get('/admin/comments');
@@ -99,7 +102,7 @@ final class CommentAttackTest extends TestCase
     public function testBurstFromOneSourceIsRateLimited(): void
     {
         for ($i = 0; $i < 5; $i++) {
-            self::assertSame(200, $this->comment("Reader{$i}", "comment {$i}")->getStatusCode());
+            self::assertSame(303, $this->comment("Reader{$i}", "comment {$i}")->getStatusCode());
         }
         self::assertSame(422, $this->comment('Reader6', 'one more')->getStatusCode());
     }

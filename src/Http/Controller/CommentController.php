@@ -49,7 +49,8 @@ final class CommentController
         } catch (RejectedComment $e) {
             return $this->public->render($entry, ['error' => $e->userMessage(), 'author' => $author, 'body' => $body], 422);
         }
-        return $this->public->render($entry, ['sent' => true], 200);
+        // Post/Redirect/Get: перезагрузка страницы не отправляет комментарий повторно
+        return $this->view->redirect('/' . $entry->slug()->toNative() . '?comment=sent');
     }
 
     public function queue(ServerRequestInterface $request): ResponseInterface
@@ -57,10 +58,15 @@ final class CommentController
         if (!$this->account($request)->role->can(Capability::CommentsModerate)) {
             return $this->forbidden($request);
         }
+        $entries = [];
+        $entryOf = function (EntryId $id) use (&$entries): ?\Bastion\Content\Domain\Entry {
+            return $entries[$id->toNative()] ??= $this->entries->find($id);
+        };
         return $this->view->admin($request, 'comments', [
             'items' => array_map(static fn (Comment $c) => [
                 'id' => $c->id->toNative(), 'author' => $c->author, 'lines' => $c->body->lines(),
                 'date' => $c->createdAt->format('Y-m-d H:i'), 'links' => $c->body->linkCount(),
+                'entry' => ($e = $entryOf($c->entry)) !== null ? ['title' => $e->title(), 'url' => '/' . $e->slug()->toNative()] : null,
             ], $this->comments->pending(100)),
         ]);
     }
