@@ -64,6 +64,29 @@ final class EntryRepository
         return $row ? $this->hydrate($row) : null;
     }
 
+    /** Запись, которую ведёт файл репозитория (docs/adr/…), — ADR-0025. */
+    public function findBySource(string $source): ?Entry
+    {
+        $row = $this->db->selectRow('SELECT * FROM ?_entries WHERE source = ?', $source);
+        return $row ? $this->hydrate($row) : null;
+    }
+
+    public function markSource(EntryId $id, string $source): void
+    {
+        $this->db->update('?_entries', ['source' => $source], ['id' => $id->toNative()]);
+    }
+
+    /** Источник в репозитории или null — запись правится в CMS. До миграции 0007 колонки нет. */
+    public function sourceOf(EntryId $id): ?string
+    {
+        try {
+            $s = $this->db->selectCell('SELECT source FROM ?_entries WHERE id = ?', $id->toNative());
+        } catch (\Throwable) {
+            return null;
+        }
+        return is_string($s) && $s !== '' ? $s : null;
+    }
+
     public function slugTaken(Language $lang, Slug $slug, ?EntryId $except = null): bool
     {
         return (bool) $this->db->selectCell(

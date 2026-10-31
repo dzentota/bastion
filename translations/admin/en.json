@@ -194,5 +194,7 @@
     "admin_nav": "Admin sections",
     "block_threatmodel": "Threat model",
     "block_option_threatmodel": "Threat model view",
-    "blocks_hint_tm": "Threat model: pick overview, matrix, findings or dfd in Option; the text field is not used."
+    "blocks_hint_tm": "Threat model: pick overview, matrix, findings or dfd in Option; the text field is not used.",
+    "managed_by_repo": "This page is managed by the repository:",
+    "managed_hint": "Change the file and run bin/bastion docs:sync-adr; edits made here are refused."
 }

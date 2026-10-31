@@ -12,4 +12,13 @@ return static function (ThreatModel $model): void {
     $s->assetIds = ['bastion-app'];
     $s->requiredCwes = ['CWE-524', 'CWE-352'];
     $model->addAbuseCase($s);
+
+    $s = new AbuseCase('managed-content-override', 'Rewrite architecture decisions in the CMS');
+    $s->asA = 'malicious or compromised editor';
+    $s->iWant = 'edit, roll back or re-publish a page synced from docs/adr, or plant a page at its address';
+    $s->soThat = 'the published decision record differs from the reviewed one in the repository';
+    $s->actorId = 'malicious-author';
+    $s->assetIds = ['bastion-app'];
+    $s->requiredCwes = ['CWE-284', 'CWE-345'];
+    $model->addAbuseCase($s);
 };

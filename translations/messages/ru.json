@@ -40,5 +40,6 @@
     "Only pages can have a parent page.": "Родительская страница бывает только у страниц.",
     "The parent must be a page in the same language.": "Родителем может быть только страница на том же языке.",
     "A page cannot be placed inside itself.": "Страницу нельзя вложить в неё саму.",
-    "Order: a number from 0 to 999.": "Порядок: число от 0 до 999."
+    "Order: a number from 0 to 999.": "Порядок: число от 0 до 999.",
+    "This page is managed by the repository and cannot be changed in the CMS.": "Эту страницу ведёт репозиторий; в CMS её изменить нельзя."
 }

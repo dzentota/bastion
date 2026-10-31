@@ -115,6 +115,9 @@ final class EntryController
         if ($entry === null || !$this->mayEdit($request, $entry)) {
             return $this->view->admin($request, 'not-found', [], 404);
         }
+        if (($refused = $this->managed($request, $entry)) !== null) {
+            return $refused;
+        }
         return $this->save($request, $entry);
     }
 
@@ -123,6 +126,9 @@ final class EntryController
         $entry = $this->entries->find($id);
         if ($entry === null || !$this->mayEdit($request, $entry)) {
             return $this->view->admin($request, 'not-found', [], 404);
+        }
+        if (($refused = $this->managed($request, $entry)) !== null) {
+            return $refused;
         }
         if (!$this->account($request)->role->can(Capability::ContentPublish)) {
             return $this->forbidden($request);
@@ -178,6 +184,9 @@ final class EntryController
         $entry = $this->entries->find($id);
         if ($entry === null || !$this->mayEdit($request, $entry)) {
             return $this->view->admin($request, 'not-found', [], 404);
+        }
+        if (($refused = $this->managed($request, $entry)) !== null) {
+            return $refused;
         }
         $chain = $this->revisions->chain($entry->id);
         $old = $this->revisions->find($entry->id, $seq->toInt());
@@ -260,6 +269,9 @@ final class EntryController
         $source = $this->entries->find($id);
         if ($source === null || !$this->mayEdit($request, $source)) {
             return $this->view->admin($request, 'not-found', [], 404);
+        }
+        if (($refused = $this->managed($request, $source)) !== null) {
+            return $refused;
         }
         $lang = $this->languages->resolve(Input::string($request, 'lang', 8));
         $taken = array_map(static fn (Entry $e) => $e->lang->toNative(), $this->entries->translations($source->translationGroup));
@@ -450,6 +462,7 @@ final class EntryController
                 'pending' => $entry->isPublished() && ($h = $this->revisions->head($entry->id)) !== null && $h->id->toNative() !== $this->revisions->publishedId($entry->id),
             ] : null,
             'slug_conflict' => ($request->getQueryParams()['error'] ?? null) === 'slug',
+            'managed' => $entry !== null ? $this->entries->sourceOf($entry->id) : null,
             // язык выбирается только у новой записи
             'languages' => $entry === null && count($this->languages->all) > 1
                 ? array_map(static fn (Language $l) => ['code' => $l->toNative(), 'selected' => $l->toNative() === $current], $this->languages->all)
@@ -505,6 +518,18 @@ final class EntryController
             ];
         }
         return $rows;
+    }
+
+    /** Запись ведёт файл репозитория (ADR-0025): в CMS её не меняют. */
+    #[AbuserStory('managed-content-override')]
+    #[Mitigation(cwe: 'CWE-284', description: 'Entries synced from the repository are read-only in the CMS: save, publish, translate, restore and tree changes are refused for every role')]
+    private function managed(ServerRequestInterface $request, Entry $entry): ?ResponseInterface
+    {
+        if ($this->entries->sourceOf($entry->id) === null) {
+            return null;
+        }
+        $this->sensor->event(DetectionPoint::ACE3, ActorKey::account($this->account($request)->getId()));
+        return $this->view->admin($request, 'integrity', ['error' => 'This page is managed by the repository and cannot be changed in the CMS.'], 403);
     }
 
     #[AbuserStory('privilege-escalation')]

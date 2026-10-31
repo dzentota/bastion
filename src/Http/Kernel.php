@@ -87,6 +87,16 @@ final class Kernel
         self::get($this->c, AfterResponse::class)->run(static fn (\Throwable $e) => $log->error('after_response.failed', ['type' => $e::class]));
     }
 
+    /** @return list<string> bin/bastion docs:sync-adr (ADR-0025) */
+    public function syncAdrs(string $sourceLanguage): array
+    {
+        $c = $this->c;
+        return (new \Bastion\Content\Application\RepositoryDocsSync(
+            self::get($c, EntryRepository::class), self::get($c, RevisionRepository::class), self::get($c, PageTree::class),
+            self::get($c, SearchIndex::class), self::get($c, SiteLanguages::class), self::get($c, AuditTrail::class), self::get($c, ClockInterface::class),
+        ))->syncAdrs(self::get($c, Paths::class)->root, $sourceLanguage);
+    }
+
     /**
      * Синхронизация журнала и установка обновлений (bin/bastion updates:run, по cron).
      * @return list<string>

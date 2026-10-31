@@ -1,6 +1,7 @@
 {% include "partials/head" %}
 <h1>{% if entry %}{% if is_page %}{{ t.edit_page }}{% else %}{{ t.edit_post }}{% endif %}{% else %}{% if is_page %}{{ t.new_page }}{% else %}{{ t.new_post }}{% endif %}{% endif %}</h1>
 {% include "partials/errors" %}
+{% if managed %}<p class="notice" role="status">{{ t.managed_by_repo }} <code>{{ managed }}</code>. {{ t.managed_hint }}</p>{% endif %}
 <form method="post" action="{{ action | url }}" class="card">
   <input type="hidden" name="_token" value="{{ csrf | attr }}">
   {% if not entry %}<input type="hidden" name="type" value="{{ values.type | attr }}">{% endif %}

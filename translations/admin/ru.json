@@ -194,5 +194,7 @@
     "admin_nav": "Разделы админки",
     "block_threatmodel": "Модель угроз",
     "block_option_threatmodel": "Вид модели угроз",
-    "blocks_hint_tm": "Модель угроз: в «Параметре» выберите overview, matrix, findings или dfd; текст не нужен."
+    "blocks_hint_tm": "Модель угроз: в «Параметре» выберите overview, matrix, findings или dfd; текст не нужен.",
+    "managed_by_repo": "Эту страницу ведёт репозиторий:",
+    "managed_hint": "Измените файл и запустите bin/bastion docs:sync-adr; правки здесь отклоняются."
 }

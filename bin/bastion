@@ -82,6 +82,12 @@ switch ($cmd) {
         }
         echo $done === [] ? "Schema is up to date.\n" : 'Applied: ' . implode(', ', $done) . "\n";
         break;
+    case 'docs:sync-adr':
+        // ADR-0025: docs/adr → страницы /{язык}/adr-NNNN (только для чтения в CMS). Язык исходников — аргумент (по умолчанию ru).
+        foreach ((new \Bastion\Http\Kernel($paths, true))->syncAdrs($arg !== '' ? $arg : 'ru') as $line) {
+            echo $line, "\n";
+        }
+        break;
     case 'updates:run':
         // Автообновления расширений (ADR-0014): запускать по cron. Ничего не ставится без записи в журнале.
         try {
@@ -94,6 +100,6 @@ switch ($cmd) {
         }
         break;
     default:
-        echo "Usage:\n  bin/bastion unlock-account <username>\n  bin/bastion unlock-ip <ip>\n  bin/bastion reset-link <username>\n  bin/bastion audit:verify\n  bin/bastion updates:run\n  bin/bastion migrate\n";
+        echo "Usage:\n  bin/bastion unlock-account <username>\n  bin/bastion unlock-ip <ip>\n  bin/bastion reset-link <username>\n  bin/bastion audit:verify\n  bin/bastion updates:run\n  bin/bastion migrate\n  bin/bastion docs:sync-adr [language]\n";
         exit($cmd === '' ? 0 : 1);
 }

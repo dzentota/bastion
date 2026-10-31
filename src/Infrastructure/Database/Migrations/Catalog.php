@@ -27,6 +27,7 @@ final class Catalog
             new M0004EntryRevisions(),
             new M0005PageTree(),
             new M0006SearchIndex(),
+            new M0007EntrySource(),
         ];
     }
 }
