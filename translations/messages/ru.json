@@ -35,5 +35,10 @@
     "Please choose a different name.": "Пожалуйста, выберите другое имя.",
     "Comments are not available for this page.": "Комментарии для этой страницы недоступны.",
     "Please write a name (up to 60 characters) and a comment (up to 5000 characters).": "Укажите имя (до 60 символов) и комментарий (до 5000 символов).",
-    "Revision history failed its integrity check; publishing is blocked.": "История ревизий не прошла проверку целостности; публикация заблокирована."
+    "Revision history failed its integrity check; publishing is blocked.": "История ревизий не прошла проверку целостности; публикация заблокирована.",
+    "The page tree would be too deep (at most 4 levels).": "Дерево страниц получится слишком глубоким (не больше 4 уровней).",
+    "Only pages can have a parent page.": "Родительская страница бывает только у страниц.",
+    "The parent must be a page in the same language.": "Родителем может быть только страница на том же языке.",
+    "A page cannot be placed inside itself.": "Страницу нельзя вложить в неё саму.",
+    "Order: a number from 0 to 999.": "Порядок: число от 0 до 999."
 }

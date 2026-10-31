@@ -20,5 +20,8 @@
     "newer": "Newer",
     "older": "Older",
     "powered_by": "Powered by Bastion",
-    "preview_banner": "Preview — this version is not published."
+    "preview_banner": "Preview — this version is not published.",
+    "section_nav": "Section",
+    "breadcrumbs": "Breadcrumbs",
+    "child_pages": "In this section"
 }

@@ -32,6 +32,40 @@ final class MenuRepository
         return is_numeric($p) && MenuPosition::tryParse((string) (int) $p, $pos) ? $pos : null;
     }
 
+    /** @return list<array{id: string, title: string, slug: string, position: int, published: bool}> меню языка для редактора, включая черновики */
+    public function editable(Language $lang): array
+    {
+        $rows = $this->db->select(
+            'SELECT e.id, e.title, e.slug, e.status, m.position FROM ?_menu m JOIN ?_entries e ON e.id = m.entry_id
+             WHERE e.type = ? AND e.lang = ? ORDER BY m.position, e.title LIMIT 50',
+            EntryType::Page->value, $lang->toNative(),
+        );
+        return array_values(array_map(static function (mixed $raw): array {
+            $r = Row::of($raw);
+            return ['id' => $r->str('id'), 'title' => $r->str('title'), 'slug' => $r->str('slug'), 'position' => $r->int('position'), 'published' => $r->str('status') === EntryStatus::Published->value];
+        }, $rows));
+    }
+
+    /** @return list<array{id: string, title: string}> страницы языка, которых нет в меню */
+    public function candidates(Language $lang): array
+    {
+        $rows = $this->db->select(
+            'SELECT e.id, e.title FROM ?_entries e LEFT JOIN ?_menu m ON m.entry_id = e.id
+             WHERE e.type = ? AND e.lang = ? AND m.entry_id IS NULL ORDER BY e.title LIMIT 500',
+            EntryType::Page->value, $lang->toNative(),
+        );
+        return array_values(array_map(static function (mixed $raw): array {
+            $r = Row::of($raw);
+            return ['id' => $r->str('id'), 'title' => $r->str('title')];
+        }, $rows));
+    }
+
+    /** Страница этого языка (только такие могут быть в меню языка). */
+    public function isPageIn(EntryId $id, Language $lang): bool
+    {
+        return (bool) $this->db->selectCell('SELECT 1 FROM ?_entries WHERE id = ? AND type = ? AND lang = ?', $id->toNative(), EntryType::Page->value, $lang->toNative());
+    }
+
     /** @return list<array{title: string, url: string}> меню языка: у каждого перевода своё место */
     public function items(Language $lang): array
     {

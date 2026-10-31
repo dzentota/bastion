@@ -5,7 +5,7 @@ namespace Bastion\Http;
 
 use Bastion\Content\Application\PreviewTokens;
 use Bastion\Content\Domain\{EntryId, Language, PreviewToken, RevisionNumber, SiteLanguages, Slug};
-use Bastion\Content\Infrastructure\{EntryRepository, MenuRepository, RevisionRepository};
+use Bastion\Content\Infrastructure\{EntryRepository, MenuRepository, PageTree, RevisionRepository};
 use Bastion\Content\Rendering\BlockHtmlRenderer;
 use Bastion\Audit\Domain\AuditTrail;
 use Bastion\Audit\Infrastructure\HmacAuditTrail;
@@ -22,7 +22,7 @@ use Bastion\Taxonomy\Infrastructure\TermRepository;
 use Bastion\Updates\Application\{UpdateChannel, UpdateConfig, UpdateTransport};
 use Bastion\Updates\Infrastructure\{HttpUpdateTransport, LedgerStore};
 use Bastion\Extensions\Infrastructure\{ExtensionRegistry, PublishedContentReader};
-use Bastion\Http\Controller\{AuditController, DatabaseController, PreferencesController, AuthController, ExtensionController, PasswordResetController, CommentController, EntryController, TermController, InstallController, MediaController, PublicController};
+use Bastion\Http\Controller\{AuditController, DatabaseController, MenuController, PreferencesController, AuthController, ExtensionController, PasswordResetController, CommentController, EntryController, TermController, InstallController, MediaController, PublicController};
 use dzentota\Router\Middleware\HoneypotMiddleware;
 use Bastion\Media\Application\{MediaSanitizer, UploadMedia, UploadPolicy};
 use Bastion\Media\Domain\{MediaId, MediaStorage};
@@ -259,7 +259,7 @@ final class Kernel
             PublicController::class => factory(fn (ContainerInterface $c) => new PublicController(
                 self::get($c, EntryRepository::class), self::get($c, BlockHtmlRenderer::class), self::get($c, View::class),
                 self::get($c, CommentRepository::class), self::get($c, HoneypotMiddleware::class), self::get($c, TermRepository::class),
-                self::get($c, SiteContext::class),
+                self::get($c, SiteContext::class), self::get($c, PageTree::class),
             )),
             SiteLanguages::class => factory(function () use ($paths): SiteLanguages {
                 if (!$paths->isInstalled()) {
@@ -300,7 +300,12 @@ final class Kernel
             AuthController::class => factory(fn (ContainerInterface $c) => new AuthController(self::get($c, TwoStepLogin::class), self::get($c, View::class))),
             EntryController::class => factory(fn (ContainerInterface $c) => new EntryController(self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, MediaRepository::class), self::get($c, AuditTrail::class), self::get($c, TermRepository::class), self::get($c, SecurityPosture::class), self::get($c, MenuRepository::class), self::get($c, SiteLanguages::class),
                 self::get($c, RevisionRepository::class), self::get($c, AccountRepository::class),
-                self::get($c, PreviewTokens::class), self::get($c, PublicController::class))),
+                self::get($c, PreviewTokens::class), self::get($c, PublicController::class), self::get($c, PageTree::class))),
+            MenuController::class => factory(fn (ContainerInterface $c) => new MenuController(
+                self::get($c, MenuRepository::class), self::get($c, SiteLanguages::class), self::get($c, View::class),
+                self::get($c, AppSensor::class), self::get($c, AuditTrail::class),
+            )),
+            PageTree::class => factory(fn (ContainerInterface $c) => new PageTree(self::get($c, Db::class))),
             PreviewTokens::class => factory(fn (ContainerInterface $c) => new PreviewTokens(self::derivedKey($paths, 'preview'), self::get($c, ClockInterface::class))),
             RevisionRepository::class => factory(fn (ContainerInterface $c) => new RevisionRepository(
                 self::get($c, Db::class), self::derivedKey($paths, 'revisions'), self::get($c, ClockInterface::class),
@@ -394,6 +399,8 @@ final class Kernel
         $router->post('/admin/extensions/disable', [ExtensionController::class, 'disable'])->middleware($staff);
         $router->get('/admin/audit', [AuditController::class, 'index'])->middleware($staff);
         $router->post('/admin/locale', [PreferencesController::class, 'locale'])->middleware($staff);
+        $router->get('/admin/menu', [MenuController::class, 'show'])->middleware($staff);
+        $router->post('/admin/menu', [MenuController::class, 'update'])->middleware($staff);
         $router->get('/admin/database', [DatabaseController::class, 'show'])->middleware($staff);
         $router->post('/admin/database', [DatabaseController::class, 'apply'])->middleware($staff);
         $router->get('/admin/comments', [CommentController::class, 'queue'])->middleware($staff);

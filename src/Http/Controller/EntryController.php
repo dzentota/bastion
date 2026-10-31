@@ -9,7 +9,7 @@ use Bastion\Content\Application\PreviewTokens;
 use Bastion\Content\Domain\{PreviewToken, RevisionDiff};
 use Bastion\Content\Infrastructure\RevisionRepository;
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
-use Bastion\Content\Domain\Block\{Block, BlockList, Heading, Image, InvalidBlock, Paragraph, Quote};
+use Bastion\Content\Domain\Block\{Block, BlockList, Callout, Code, Heading, Image, InvalidBlock, Paragraph, Quote, Table};
 use Bastion\Media\Domain\{MediaId, MediaItem};
 use Bastion\Media\Infrastructure\MediaRepository;
 use Bastion\Content\Infrastructure\EntryRepository;
@@ -45,6 +45,7 @@ final class EntryController
         private readonly AccountRepository $accounts,
         private readonly PreviewTokens $previews,
         private readonly PublicController $public,
+        private readonly \Bastion\Content\Infrastructure\PageTree $tree,
     ) {
     }
 
@@ -65,7 +66,7 @@ final class EntryController
     public function create(ServerRequestInterface $request): ResponseInterface
     {
         $type = ($request->getQueryParams()['type'] ?? null) === 'page' ? EntryType::Page : EntryType::Post;
-        return $this->editor($request, null, ['title' => '', 'slug' => '', 'categories' => '', 'tags' => '', 'type' => $type->value, 'lang' => $this->languages->default->toNative(), 'in_menu' => false, 'menu_position' => '10'], [], []);
+        return $this->editor($request, null, ['title' => '', 'slug' => '', 'categories' => '', 'tags' => '', 'type' => $type->value, 'lang' => $this->languages->default->toNative(), 'parent' => '', 'page_position' => '0', 'in_menu' => false, 'menu_position' => '10'], [], []);
     }
 
     public function edit(ServerRequestInterface $request, EntryId $id): ResponseInterface
@@ -78,15 +79,23 @@ final class EntryController
         $head = $this->revisions->head($entry->id);
         $rows = [];
         foreach ($head->blocks ?? $entry->blocks() as $b) {
-            $data = array_map('strval', $b->toArray());
-            $rows[] = $b instanceof Image
-                ? ['type' => 'image', 'media' => $data['media'], 'text' => $data['alt']]
-                : ['type' => $b::type()] + $data;
+            if (!$b instanceof Block) {
+                continue;
+            }
+            $data = array_map(static fn (mixed $v): string => is_scalar($v) ? (string) $v : '', $b->toArray());
+            $rows[] = match (true) {
+                $b instanceof Image => ['type' => 'image', 'media' => $data['media'] ?? '', 'text' => $data['alt'] ?? ''],
+                $b instanceof Code => ['type' => 'code', 'text' => $data['text'] ?? '', 'option' => $b->language],
+                $b instanceof Callout => ['type' => 'callout', 'text' => $data['text'] ?? '', 'option' => $b->variant],
+                $b instanceof Table => ['type' => 'table', 'text' => $b->text(), 'option' => $b->header ? 'header' : ''],
+                default => ['type' => $b::type(), 'text' => $data['text'] ?? ''],
+            };
         }
         return $this->editor($request, $entry, [
             'title' => $head->title ?? $entry->title(), 'slug' => $head->slug ?? $entry->slug(), 'type' => $entry->type->value, 'lang' => $entry->lang->toNative(),
             'categories' => $this->terms->forEntry($entry->id, TermKind::Category)->toInput(),
             'tags' => $this->terms->forEntry($entry->id, TermKind::Tag)->toInput(),
+            'parent' => ($place = $this->tree->placement($entry->id))['parent'] ?? '', 'page_position' => (string) $place['position'],
             'in_menu' => ($pos = $this->menu->positionOf($entry->id)) !== null,
             'menu_position' => $pos?->toNative() ?? '10',
         ], $rows, []);
@@ -261,6 +270,15 @@ final class EntryController
         $copy = $source->translate($lang, $source->title(), $slug, $this->account($request)->getId());
         $this->entries->save($copy);
         $this->revisions->record($copy, $copy->title(), $copy->slug(), $copy->blocks(), $this->account($request)->getId());
+        // родитель перевода — перевод родителя на этот язык, если он есть
+        $sourceParent = $this->tree->placement($source->id)['parent'];
+        if ($sourceParent !== null && EntryId::tryParse($sourceParent, $pid) && ($p = $this->entries->find($pid)) !== null) {
+            foreach ($this->entries->translations($p->translationGroup) as $variant) {
+                if ($variant->lang->toNative() === $lang->toNative() && $this->tree->refusal($copy, $variant->id) === null) {
+                    $this->tree->place($copy->id, $variant->id, $this->tree->placement($source->id)['position']);
+                }
+            }
+        }
         $this->audit->record(AuditAction::EntryCreated, $this->account($request)->getId(), $copy->id->toNative(), $this->ip($request));
         return $this->view->redirect('/admin/entries/' . $copy->id->toNative() . '/edit');
     }
@@ -311,12 +329,28 @@ final class EntryController
             $errors[] = 'One of the blocks is invalid.';
         }
         $this->detectXss($request, $rawTitle, $rawSlug, ...array_column($rows, 'text'));
-        $menuValues = ['in_menu' => $inMenu, 'menu_position' => $rawPosition];
+        $rawParent = $inFeed ? '' : Input::string($request, 'parent', 36);
+        $rawPagePosition = $inFeed ? '0' : (Input::string($request, 'page_position', 16) ?: '0');
+        $parent = null;
+        if ($rawParent !== '' && !EntryId::tryParse($rawParent, $parent)) {
+            $errors[] = 'The parent must be a page in the same language.';
+        }
+        if (!preg_match('/^\d{1,3}$/', $rawPagePosition)) {
+            $errors[] = 'Order: a number from 0 to 999.';
+        }
+        $menuValues = ['in_menu' => $inMenu, 'menu_position' => $rawPosition, 'parent' => $rawParent, 'page_position' => $rawPagePosition];
         if ($errors !== [] || $categories === null || $tags === null || $type === null || $lang === null || $title === null || $slug === null || $blocks === null) {
             $this->sensor->event(DetectionPoint::IE2, ActorKey::ip($this->ip($request)));
             return $this->editor($request, $entry, ['title' => $rawTitle, 'slug' => $rawSlug, 'categories' => $rawCategories, 'tags' => $rawTags, 'type' => $type->value ?? 'post', 'lang' => $lang?->toNative() ?? $this->languages->default->toNative()] + $menuValues, $rows, $errors, 422);
         }
 
+        if (!$inFeed) {
+            $refusal = $this->tree->refusal($entry ?? Entry::draft($type, $lang, $title, $slug, $blocks, $this->account($request)->getId()), $parent);
+            if ($refusal !== null) {
+                $this->sensor->event(DetectionPoint::IE2, ActorKey::ip($this->ip($request)));
+                return $this->editor($request, $entry, ['title' => $rawTitle, 'slug' => $rawSlug, 'categories' => '', 'tags' => '', 'type' => $type->value, 'lang' => $lang->toNative()] + $menuValues, $rows, [$refusal], 422);
+            }
+        }
         $action = $entry === null ? AuditAction::EntryCreated : AuditAction::EntryUpdated;
         if ($entry === null) {
             $entry = Entry::draft($type, $lang, $title, $slug, $blocks, $this->account($request)->getId());
@@ -335,6 +369,9 @@ final class EntryController
                 $rows, ['The site has reached the limit of distinct categories or tags; reuse existing ones.'], 422);
         }
         $this->menu->place($entry->id, $inMenu ? $position : null);
+        if (!$inFeed) {
+            $this->tree->place($entry->id, $parent, (int) $rawPagePosition);
+        }
         $this->audit->record($action, $this->account($request)->getId(), $entry->id->toNative(), $this->ip($request));
         return $this->view->redirect('/admin/entries/' . $entry->id->toNative() . '/edit');
     }
@@ -357,10 +394,14 @@ final class EntryController
             if (trim($text) === '') {
                 continue; // пустые строки редактора игнорируются
             }
+            $option = $row['option'] ?? '';
             $blocks[] = match ($row['type'] ?? '') {
                 'paragraph' => Paragraph::fromArray(['text' => $text]),
                 'quote' => Quote::fromArray(['text' => $text]),
                 'heading' => Heading::fromArray(['text' => $text, 'level' => 2]),
+                'code' => Code::fromArray(['text' => $text, 'language' => in_array($option, Code::LANGUAGES, true) ? $option : 'text']),
+                'callout' => Callout::fromArray(['text' => $text, 'variant' => in_array($option, Callout::VARIANTS, true) ? $option : 'note']),
+                'table' => Table::fromArray(['text' => $text, 'header' => $option === 'header']),
                 default => throw new InvalidBlock('type'),
             };
         }
@@ -380,6 +421,10 @@ final class EntryController
         $library = array_filter($this->media->latest(100), static fn (MediaItem $m) => $m->kind->isImage());
         $rows = array_map(static fn (array $r, int $i) => [
             'i' => $i, 'text' => $r['text'] ?? '',
+            'is_code' => ($r['type'] ?? '') === 'code', 'is_table' => ($r['type'] ?? '') === 'table', 'is_callout' => ($r['type'] ?? '') === 'callout',
+            'languages' => array_map(static fn (string $l) => ['value' => $l, 'selected' => ($r['option'] ?? '') === $l], Code::LANGUAGES),
+            'variants' => array_map(static fn (string $v) => ['value' => $v, 'selected' => ($r['option'] ?? '') === $v], Callout::VARIANTS),
+            'header' => ($r['option'] ?? '') === 'header',
             'is_paragraph' => ($r['type'] ?? '') === 'paragraph', 'is_heading' => ($r['type'] ?? '') === 'heading',
             'is_quote' => ($r['type'] ?? '') === 'quote', 'is_image' => ($r['type'] ?? '') === 'image',
             'media' => array_values(array_map(static fn (MediaItem $m) => [
@@ -403,10 +448,34 @@ final class EntryController
             'action' => $entry ? '/admin/entries/' . $entry->id->toNative() : '/admin/entries',
             'values' => $values,
             'is_page' => ($values['type'] ?? 'post') === 'page',
+            'parents' => ($values['type'] ?? 'post') === 'page' ? $this->parentOptions($entry, $current, is_string($values['parent'] ?? null) ? $values['parent'] : '') : [],
             'rows' => $rows,
             'errors' => $errors,
             'can_publish' => $account->role->can(Capability::ContentPublish),
         ], $status);
+    }
+
+    /** @return list<array{id: string, label: string, selected: bool}> страницы языка без самой записи и её потомков */
+    private function parentOptions(?Entry $entry, string $lang, string $selected): array
+    {
+        $language = $this->languages->resolve($lang) ?? $this->languages->default;
+        $out = [];
+        $skipDeeperThan = null;
+        foreach ($this->tree->outline($language) as $p) {
+            if ($skipDeeperThan !== null && $p['depth'] > $skipDeeperThan) {
+                continue; // потомок самой записи
+            }
+            $skipDeeperThan = null;
+            if ($entry !== null && $p['id'] === $entry->id->toNative()) {
+                $skipDeeperThan = $p['depth'];
+                continue;
+            }
+            if ($p['depth'] >= \Bastion\Content\Infrastructure\PageTree::MAX_DEPTH - 1) {
+                continue; // ребёнок такой страницы превысил бы глубину
+            }
+            $out[] = ['id' => $p['id'], 'label' => str_repeat('— ', $p['depth']) . $p['title'], 'selected' => $p['id'] === $selected];
+        }
+        return $out;
     }
 
     /** @return list<array<string, mixed>> по строке на язык сайта: вариант есть — ссылка, нет — кнопка «добавить» */

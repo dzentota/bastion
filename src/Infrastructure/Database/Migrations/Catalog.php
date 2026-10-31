@@ -25,6 +25,7 @@ final class Catalog
             new M0002EntryLanguages($defaultLanguage),
             new M0003AccountLocale(),
             new M0004EntryRevisions(),
+            new M0005PageTree(),
         ];
     }
 }

@@ -17,6 +17,9 @@ final class BlockList implements \IteratorAggregate, \Countable
         'heading' => Heading::class,
         'quote' => Quote::class,
         'image' => Image::class,
+        'code' => Code::class,
+        'table' => Table::class,
+        'callout' => Callout::class,
     ];
 
     /** @param list<Block> $blocks */

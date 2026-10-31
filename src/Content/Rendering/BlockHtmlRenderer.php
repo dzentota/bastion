@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\Content\Rendering;
 
-use Bastion\Content\Domain\Block\{Block, BlockList, Heading, Image, Paragraph, Quote};
+use Bastion\Content\Domain\Block\{Block, BlockList, Callout, Code, Heading, Image, Paragraph, Quote, Table};
 use Bastion\Theming\Dsl\{SafeHtml, TrustedHtmlToken};
 use HybridTM\Attributes\{AbuserStory, AssetId, Mitigation};
 
@@ -40,8 +40,35 @@ final class BlockHtmlRenderer
                 $this->esc($block->alt->toNative()),
             ),
             $block instanceof Quote => '<blockquote><p>' . $this->text($block->text->toNative()) . '</p></blockquote>',
+            // язык и вариант — из закрытых списков, безопасны в атрибуте по построению
+            $block instanceof Code => sprintf('<pre class="code"><code class="language-%s">%s</code></pre>', $block->language, $this->esc($block->text->toNative())),
+            $block instanceof Callout => sprintf('<aside class="callout callout-%s" role="note"><p>%s</p></aside>', $block->variant, $this->text($block->text->toNative())),
+            $block instanceof Table => $this->table($block),
             default => throw new \LogicException('Unrenderable block ' . $block::type()),
         };
+    }
+
+    private function table(Table $t): string
+    {
+        $rows = $t->rows;
+        $head = $t->header ? array_shift($rows) : null;
+        $body = '';
+        foreach ($rows as $r) {
+            $body .= $this->row($r, 'td');
+        }
+        return '<div class="table"><table>'
+            . ($head !== null ? '<thead>' . $this->row($head, 'th') . '</thead>' : '')
+            . '<tbody>' . $body . '</tbody></table></div>';
+    }
+
+    /** @param list<string> $cells */
+    private function row(array $cells, string $tag): string
+    {
+        $html = '<tr>';
+        foreach ($cells as $c) {
+            $html .= "<{$tag}>" . $this->esc($c) . "</{$tag}>";
+        }
+        return $html . '</tr>';
     }
 
     private function text(string $s): string

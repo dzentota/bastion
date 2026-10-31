@@ -16,6 +16,7 @@ enum AuditAction: string
     case EntryUpdated = 'entry_updated';
     case EntryPublished = 'entry_published';
     case RevisionRestored = 'revision_restored';
+    case MenuUpdated = 'menu_updated';
     case MediaUploaded = 'media_uploaded';
     case CommentApproved = 'comment_approved';
     case CommentRejected = 'comment_rejected';

@@ -9,7 +9,7 @@
 <div class="notice notice-{{ n.level | attr }}" role="status"><strong>{{ n.title }}</strong><p>{{ n.detail }}</p></div>
 {% endeach %}
 <h1>{{ t.content }}</h1>
-<p><a class="button" href="/admin/entries/new">{{ t.new_post }}</a> <a class="button" href="/admin/entries/new?type=page">{{ t.new_page }}</a> <a href="/admin/media">{{ t.media_library }}</a> · <a href="/admin/comments">{{ t.comments }}</a> · <a href="/admin/audit">{{ t.audit }}</a> · <a href="/admin/extensions">{{ t.extensions }}</a> · <a href="/admin/database">{{ t.database }}</a></p>
+<p><a class="button" href="/admin/entries/new">{{ t.new_post }}</a> <a class="button" href="/admin/entries/new?type=page">{{ t.new_page }}</a> <a href="/admin/media">{{ t.media_library }}</a> · <a href="/admin/comments">{{ t.comments }}</a> · <a href="/admin/audit">{{ t.audit }}</a> · <a href="/admin/extensions">{{ t.extensions }}</a> · <a href="/admin/menu">{{ t.site_menu }}</a> · <a href="/admin/database">{{ t.database }}</a></p>
 <table>
   <thead><tr><th>{{ t.title }}</th><th>{{ t.language }}</th><th>{{ t.type }}</th><th>{{ t.status }}</th><th></th></tr></thead>
   <tbody>

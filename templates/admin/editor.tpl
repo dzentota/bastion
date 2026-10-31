@@ -15,6 +15,8 @@
   <p class="hint">{{ t.terms_hint }}</p>
   {% else %}
   <p class="hint">{{ t.pages_hint }}</p>
+  <label>{{ t.parent_page }} <select name="parent"><option value="">{{ t.parent_none }}</option>{% each parents as p %}<option value="{{ p.id | attr }}"{% if p.selected %} selected{% endif %}>{{ p.label }}</option>{% endeach %}</select></label>
+  <label>{{ t.page_order }} <input name="page_position" value="{{ values.page_position | attr }}" inputmode="numeric" pattern="[0-9]{1,3}" maxlength="3"></label>
   <label class="inline"><input type="checkbox" name="in_menu" value="1"{% if values.in_menu %} checked{% endif %}> {{ t.show_in_menu }}</label>
   <label>{{ t.menu_position }} <input name="menu_position" value="{{ values.menu_position | attr }}" inputmode="numeric" pattern="[1-9][0-9]?" maxlength="2"></label>
   {% endif %}
@@ -27,6 +29,9 @@
         <option value="heading"{% if row.is_heading %} selected{% endif %}>{{ t.block_heading }}</option>
         <option value="quote"{% if row.is_quote %} selected{% endif %}>{{ t.block_quote }}</option>
         <option value="image"{% if row.is_image %} selected{% endif %}>{{ t.block_image }}</option>
+        <option value="code"{% if row.is_code %} selected{% endif %}>{{ t.block_code }}</option>
+        <option value="table"{% if row.is_table %} selected{% endif %}>{{ t.block_table }}</option>
+        <option value="callout"{% if row.is_callout %} selected{% endif %}>{{ t.block_callout }}</option>
       </select>
       <div>
         <textarea name="blocks[{{ row.i | attr }}][text]" rows="3" aria-label="{{ t.block_text | attr }}">{{ row.text }}</textarea>
@@ -34,9 +39,16 @@
           <option value="">{{ t.block_media_none }}</option>
           {% each row.media as m %}<option value="{{ m.id | attr }}"{% if m.selected %} selected{% endif %}>{{ m.name }}</option>{% endeach %}
         </select>
+        <select name="blocks[{{ row.i | attr }}][option]" aria-label="{{ t.block_option | attr }}">
+          <option value="">{{ t.block_option_none }}</option>
+          <optgroup label="{{ t.block_option_language | attr }}">{% each row.languages as o %}<option value="{{ o.value | attr }}"{% if o.selected %} selected{% endif %}>{{ o.value }}</option>{% endeach %}</optgroup>
+          <optgroup label="{{ t.block_option_callout | attr }}">{% each row.variants as o %}<option value="{{ o.value | attr }}"{% if o.selected %} selected{% endif %}>{{ o.value }}</option>{% endeach %}</optgroup>
+          <optgroup label="{{ t.block_option_table | attr }}"><option value="header"{% if row.header %} selected{% endif %}>{{ t.block_option_header }}</option></optgroup>
+        </select>
       </div>
     </div>
     {% endeach %}
+    <p class="hint">{{ t.blocks_hint_new }}</p>
     <p class="hint">{{ t.blocks_hint }} <a href="/admin/media">{{ t.blocks_hint_media_link }}</a>{{ t.blocks_hint_suffix }}</p>
   </fieldset>
   <button>{% if entry.published %}{{ t.save_changes }}{% else %}{{ t.save_draft }}{% endif %}</button>

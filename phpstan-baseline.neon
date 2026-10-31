@@ -19,38 +19,8 @@ parameters:
 			path: src/Content/Rendering/BlockHtmlRenderer.php
 
 		-
-			message: '#^Cannot call method toArray\(\) on mixed\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: src/Http/Controller/EntryController.php
-
-		-
-			message: '#^Cannot call static method type\(\) on mixed\.$#'
-			identifier: staticMethod.nonObject
-			count: 1
-			path: src/Http/Controller/EntryController.php
-
-		-
 			message: '#^Cannot cast mixed to string\.$#'
 			identifier: cast.string
-			count: 1
-			path: src/Http/Controller/EntryController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(mixed\)\: mixed\)\|null, ''strval'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Http/Controller/EntryController.php
-
-		-
-			message: '#^Parameter \#2 \$array of function array_map expects array, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Http/Controller/EntryController.php
-
-		-
-			message: '#^Parameter \#4 \$rows of method Bastion\\Http\\Controller\\EntryController\:\:editor\(\) expects list\<array\<string, string\>\>, list\<non\-empty\-array\<mixed\>\> given\.$#'
-			identifier: argument.type
 			count: 1
 			path: src/Http/Controller/EntryController.php
 

@@ -24,7 +24,53 @@ final class PublicController
         private readonly HoneypotMiddleware $honeypot,
         private readonly TermRepository $terms,
         private readonly SiteContext $site,
+        private readonly \Bastion\Content\Infrastructure\PageTree $tree,
     ) {
+    }
+
+    /**
+     * @param array{title: string, slug: string} $p
+     * @return array{title: string, url: string}
+     */
+    private static function link(string $lang, array $p): array
+    {
+        return ['title' => $p['title'], 'url' => '/' . $lang . '/' . $p['slug']];
+    }
+
+    /**
+     * @param list<array{id: string, title: string, slug: string}> $pages
+     * @return list<array{title: string, url: string}>
+     */
+    private static function links(string $lang, array $pages): array
+    {
+        $out = [];
+        foreach ($pages as $p) {
+            $out[] = self::link($lang, $p);
+        }
+        return $out;
+    }
+
+    /** @return array<string, mixed> навигация страницы по дереву: крошки, раздел, дети */
+    private function treeContext(Entry $entry): array
+    {
+        if ($entry->type->inFeed()) {
+            return [];
+        }
+        $lang = $entry->lang->toNative();
+        $current = $entry->id->toNative();
+        $section = $this->tree->publishedSection($entry->id);
+        $items = [];
+        foreach ($section['items'] as $p) {
+            $items[] = self::link($lang, $p) + ['depth' => (string) $p['depth'], 'current' => $p['id'] === $current];
+        }
+        return [
+            'breadcrumbs' => self::links($lang, $this->tree->publishedAncestors($entry->id)),
+            'children' => self::links($lang, $this->tree->publishedChildren($entry->id)),
+            'section' => $section['root'] !== null && $items !== [] ? [
+                'root' => self::link($lang, $section['root']) + ['current' => $section['root']['id'] === $current],
+                'items' => $items,
+            ] : null,
+        ];
     }
 
     /** / → главная языка по умолчанию. */
@@ -67,6 +113,7 @@ final class PublicController
         return $this->view->theme('entry', [
             'site' => $this->site->for($entry->lang, $this->entries->translations($entry->translationGroup)),
             'entry' => $this->summary($entry) + ['body' => $this->blocks->render($entry->blocks())] + $this->termLinks($entry),
+            'tree' => $this->treeContext($entry),
             'comments_open' => $entry->type->inFeed(),
             'comments' => !$entry->type->inFeed() ? [] : array_map(static fn (Comment $c) => [
                 'author' => $c->author, 'lines' => $c->body->lines(), 'date' => $c->createdAt->format('Y-m-d'),
@@ -109,6 +156,7 @@ final class PublicController
             'site' => $this->site->for($transient->lang),
             'preview' => true,
             'entry' => $this->summary($transient) + ['body' => $this->blocks->render($transient->blocks())] + $this->termLinks($transient),
+            'tree' => $this->treeContext($transient),
             'comments_open' => false,
             'comments' => [],
             'comment_form' => [],
