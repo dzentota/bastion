@@ -11,7 +11,11 @@
   <label>Categories <input name="categories" value="{{ values.categories | attr }}" maxlength="600" placeholder="news, security"></label>
   <label>Tags <input name="tags" value="{{ values.tags | attr }}" maxlength="1600" placeholder="php, release"></label>
   <p class="hint">Comma-separated slugs (lowercase letters, digits, dashes). Up to 5 categories and 15 tags.</p>
-  {% else %}<p class="hint">Pages are permanent content outside the feed: no categories, tags or comments.</p>{% endif %}
+  {% else %}
+  <p class="hint">Pages are permanent content outside the feed: no categories, tags or comments.</p>
+  <label class="inline"><input type="checkbox" name="in_menu" value="1"{% if values.in_menu %} checked{% endif %}> Show in site menu</label>
+  <label>Menu position (1–99, lower is further left) <input name="menu_position" value="{{ values.menu_position | attr }}" inputmode="numeric" pattern="[1-9][0-9]?" maxlength="2"></label>
+  {% endif %}
   <fieldset>
     <legend>Content blocks</legend>
     {% each rows as row %}

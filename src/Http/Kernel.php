@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Bastion\Http;
 
 use Bastion\Content\Domain\{EntryId, Slug};
-use Bastion\Content\Infrastructure\EntryRepository;
+use Bastion\Content\Infrastructure\{EntryRepository, MenuRepository};
 use Bastion\Content\Rendering\BlockHtmlRenderer;
 use Bastion\Audit\Domain\AuditTrail;
 use Bastion\Audit\Infrastructure\HmacAuditTrail;
@@ -234,8 +234,10 @@ final class Kernel
                     new Renderer(new DirectoryTemplateSource($paths->adminTemplates()), $cache('admin')),
                     new Renderer(new DirectoryTemplateSource($paths->theme('default')), $cache('theme'), self::get($c, HelperCollector::class)->all()),
                     self::get($c, ResponseFactoryInterface::class),
+                    $paths->isInstalled() ? static fn (): array => self::get($c, MenuRepository::class)->items() : null,
                 );
             }),
+            MenuRepository::class => factory(fn (ContainerInterface $c) => new MenuRepository(self::get($c, Db::class))),
             Installer::class => create(Installer::class)->constructor(get(Paths::class)),
 
             PublicController::class => factory(fn (ContainerInterface $c) => new PublicController(
@@ -267,7 +269,7 @@ final class Kernel
             )),
             InstallController::class => factory(fn (ContainerInterface $c) => new InstallController(self::get($c, Installer::class), self::get($c, View::class), self::get($c, AppSensor::class))),
             AuthController::class => factory(fn (ContainerInterface $c) => new AuthController(self::get($c, TwoStepLogin::class), self::get($c, View::class))),
-            EntryController::class => factory(fn (ContainerInterface $c) => new EntryController(self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, MediaRepository::class), self::get($c, AuditTrail::class), self::get($c, TermRepository::class), self::get($c, SecurityPosture::class))),
+            EntryController::class => factory(fn (ContainerInterface $c) => new EntryController(self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, MediaRepository::class), self::get($c, AuditTrail::class), self::get($c, TermRepository::class), self::get($c, SecurityPosture::class), self::get($c, MenuRepository::class))),
             TermRepository::class => factory(fn (ContainerInterface $c) => new TermRepository(self::get($c, Db::class))),
             TermController::class => factory(fn (ContainerInterface $c) => new TermController(
                 self::get($c, TermRepository::class), self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class),

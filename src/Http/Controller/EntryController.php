@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Bastion\Http\Controller;
 
 use Bastion\Audit\Domain\{AuditAction, AuditTrail};
-use Bastion\Content\Domain\{Entry, EntryId, EntryType, Slug, Title};
+use Bastion\Content\Domain\{Entry, EntryId, EntryType, MenuPosition, Slug, Title};
 use Bastion\Content\Domain\Block\{Block, BlockList, Heading, Image, InvalidBlock, Paragraph, Quote};
 use Bastion\Media\Domain\{MediaId, MediaItem};
 use Bastion\Media\Infrastructure\MediaRepository;
@@ -35,6 +35,7 @@ final class EntryController
         private readonly AuditTrail $audit,
         private readonly TermRepository $terms,
         private readonly \Bastion\SecurityMonitoring\Application\SecurityPosture $posture,
+        private readonly \Bastion\Content\Infrastructure\MenuRepository $menu,
     ) {
     }
 
@@ -55,7 +56,7 @@ final class EntryController
     public function create(ServerRequestInterface $request): ResponseInterface
     {
         $type = ($request->getQueryParams()['type'] ?? null) === 'page' ? EntryType::Page : EntryType::Post;
-        return $this->editor($request, null, ['title' => '', 'slug' => '', 'categories' => '', 'tags' => '', 'type' => $type->value], [], []);
+        return $this->editor($request, null, ['title' => '', 'slug' => '', 'categories' => '', 'tags' => '', 'type' => $type->value, 'in_menu' => false, 'menu_position' => '10'], [], []);
     }
 
     public function edit(ServerRequestInterface $request, EntryId $id): ResponseInterface
@@ -75,6 +76,8 @@ final class EntryController
             'title' => $entry->title(), 'slug' => $entry->slug(), 'type' => $entry->type->value,
             'categories' => $this->terms->forEntry($entry->id, TermKind::Category)->toInput(),
             'tags' => $this->terms->forEntry($entry->id, TermKind::Tag)->toInput(),
+            'in_menu' => ($pos = $this->menu->positionOf($entry->id)) !== null,
+            'menu_position' => $pos?->toNative() ?? '10',
         ], $rows, []);
     }
 
@@ -119,6 +122,13 @@ final class EntryController
         $inFeed = $type?->inFeed() ?? true;
         $rawCategories = $inFeed ? Input::string($request, 'categories', 600) : '';
         $rawTags = $inFeed ? Input::string($request, 'tags', 1600) : '';
+        $inMenu = !$inFeed && Input::string($request, 'in_menu', 1) === '1';
+        $rawPosition = $inFeed ? '' : Input::string($request, 'menu_position', 16);
+        $rawPosition = $rawPosition === '' ? '10' : $rawPosition; // '0' в PHP ложно — без ?:
+        $position = null;
+        if ($inMenu && !MenuPosition::tryParse($rawPosition, $position)) {
+            $errors[] = 'Menu position: a number from 1 to 99.';
+        }
         $categories = TermList::parse(TermKind::Category, $rawCategories);
         $tags = TermList::parse(TermKind::Tag, $rawTags);
         $categories ?? $errors[] = 'Categories: up to 5 comma-separated slugs.';
@@ -138,9 +148,10 @@ final class EntryController
             $errors[] = 'One of the blocks is invalid.';
         }
         $this->detectXss($request, $rawTitle, $rawSlug, ...array_column($rows, 'text'));
+        $menuValues = ['in_menu' => $inMenu, 'menu_position' => $rawPosition];
         if ($errors !== [] || $categories === null || $tags === null || $type === null) {
             $this->sensor->event(DetectionPoint::IE2, ActorKey::ip($this->ip($request)));
-            return $this->editor($request, $entry, ['title' => $rawTitle, 'slug' => $rawSlug, 'categories' => $rawCategories, 'tags' => $rawTags, 'type' => $type->value ?? 'post'], $rows, $errors, 422);
+            return $this->editor($request, $entry, ['title' => $rawTitle, 'slug' => $rawSlug, 'categories' => $rawCategories, 'tags' => $rawTags, 'type' => $type->value ?? 'post'] + $menuValues, $rows, $errors, 422);
         }
 
         $action = $entry === null ? AuditAction::EntryCreated : AuditAction::EntryUpdated;
@@ -154,6 +165,7 @@ final class EntryController
             return $this->editor($request, $entry, ['title' => $rawTitle, 'slug' => $rawSlug, 'categories' => $rawCategories, 'tags' => $rawTags, 'type' => $type->value],
                 $rows, ['The site has reached the limit of distinct categories or tags; reuse existing ones.'], 422);
         }
+        $this->menu->place($entry->id, $inMenu ? $position : null);
         $this->audit->record($action, $this->account($request)->getId(), $entry->id->toNative(), $this->ip($request));
         return $this->view->redirect('/admin/entries/' . $entry->id->toNative() . '/edit');
     }

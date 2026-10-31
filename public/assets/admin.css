@@ -21,3 +21,4 @@ table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:8px;bord
 .notice{border-radius:6px;padding:12px;margin:12px 0;border:1px solid}.notice p{margin:4px 0 0;font-size:14px}
 .notice-warning{background:#fff4e5;color:#7a4b00;border-color:#f0c27a}.notice-danger{background:#fdecea;color:#8a1c12;border-color:#f1a39b}
 @media (prefers-color-scheme:dark){.notice-warning{background:#2b2111;color:#ffcf8a;border-color:#6b4d1f}.notice-danger{background:#2d1513;color:#ffb4ab;border-color:#7a2a22}}
+label.inline{display:flex;gap:8px;align-items:center}label.inline input{width:auto;margin:0}

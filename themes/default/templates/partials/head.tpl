@@ -7,5 +7,5 @@
 <link rel="stylesheet" href="/assets/theme.css">
 </head>
 <body>
-<header class="site"><a href="/">{{ site.name }}</a></header>
+<header class="site"><a href="/">{{ site.name }}</a>{% if site.menu %}<nav class="menu" aria-label="Site">{% each site.menu as item %}<a href="{{ item.url | url }}">{{ item.title }}</a>{% endeach %}</nav>{% endif %}</header>
 <main>

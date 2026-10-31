@@ -14,6 +14,8 @@ final class View
         private readonly Renderer $admin,
         private readonly Renderer $theme,
         private readonly ResponseFactoryInterface $responses,
+        /** @var (\Closure(): list<array{title: string, url: string}>)|null */
+        private readonly ?\Closure $siteMenu = null,
     ) {
     }
 
@@ -30,6 +32,9 @@ final class View
     /** @param array<string, mixed> $ctx */
     public function theme(string $template, array $ctx, int $status = 200): ResponseInterface
     {
+        if (is_array($ctx['site'] ?? null) && $this->siteMenu !== null) {
+            $ctx['site']['menu'] = ($this->siteMenu)();
+        }
         return $this->html($this->theme->render(TemplateName::fromNative($template), $ctx), $status);
     }
 

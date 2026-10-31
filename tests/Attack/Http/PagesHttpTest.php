@@ -66,4 +66,33 @@ final class PagesHttpTest extends TestCase
         self::assertSame(422, $this->create($h, 'odd', ['type' => 'gallery'], false));
         self::assertSame(303, $this->create($h, 'no-type', [], false), 'без поля type создаётся пост');
     }
+
+    public function testSiteMenuListsPublishedPagesInOrder(): void
+    {
+        $h = new HttpHarness();
+        $h->installAndLogin();
+        self::assertSame(303, $this->create($h, 'contact', ['type' => 'page', 'in_menu' => '1', 'menu_position' => '20']));
+        self::assertSame(303, $this->create($h, 'about', ['type' => 'page', 'in_menu' => '1', 'menu_position' => '5', 'title' => 'About <us>']));
+        self::assertSame(303, $this->create($h, 'hidden', ['type' => 'page']));
+        self::assertSame(303, $this->create($h, 'draft-page', ['type' => 'page', 'in_menu' => '1'], publish: false));
+        self::assertSame(303, $this->create($h, 'a-post', ['in_menu' => '1']), 'у постов флажок игнорируется');
+
+        $anon = $h->fresh();
+        $anon->get('/');
+        preg_match('~<nav class="menu"[^>]*>(.*?)</nav>~s', $anon->body(), $m);
+        self::assertSame(['/about', '/contact'], preg_match_all('~href="([^"]+)"~', $m[1] ?? '', $hrefs) ? $hrefs[1] : [], 'только опубликованные страницы, по позиции');
+        self::assertStringContainsString('About &lt;us&gt;', $m[1]);
+        $anon->get('/category/none');
+        self::assertStringContainsString('class="menu"', $anon->body(), 'меню и на служебных страницах темы');
+
+        self::assertSame(422, $this->create($h, 'bad-pos', ['type' => 'page', 'in_menu' => '1', 'menu_position' => '0'], publish: false));
+        self::assertSame(422, $this->create($h, 'bad-pos2', ['type' => 'page', 'in_menu' => '1', 'menu_position' => '1; DROP'], publish: false));
+
+        // снять флажок — пункт уходит из меню
+        $h->get('/admin');
+        preg_match('~/admin/entries/([0-9a-f-]+)/edit">Contact~', $h->body(), $id);
+        $h->get("/admin/entries/{$id[1]}/edit");
+        $h->post("/admin/entries/{$id[1]}", ['title' => 'Contact', 'slug' => 'contact', 'blocks' => [['type' => 'paragraph', 'text' => 'Body']]]);
+        self::assertStringNotContainsString('href="/contact"', (string) $h->fresh()->get('/')->getBody());
+    }
 }
