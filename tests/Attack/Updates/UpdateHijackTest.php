@@ -143,6 +143,20 @@ final class UpdateHijackTest extends TestCase
         self::assertSame('1.1.0', $this->version());
     }
 
+    public function testBootstrapOfForeignKeyIsNotRotationForExtensionPinnedOutsideLedger(): void
+    {
+        // расширение поставлено до настройки канала: его ключа в журнале нет
+        $zip = ExtensionFixtures::zip(['extension.json' => $this->acme->manifest('1.0.0'), 'src/Plugin.php' => ExtensionFixtures::plugin()]);
+        (new ExtensionInstaller(new PackageReader(), new StaticGate(), $this->registry(), sys_get_temp_dir() . '/bastion-upd-' . bin2hex(random_bytes(4)), new RecordingAuditTrail()))
+            ->install($zip, PackageSignature::sign($zip, $this->acme->secret), 'admin', '198.51.100.1');
+        $attacker = new ExtensionFixtures();
+        $this->record(['type' => 'key-append', 'publisher' => 'acme', 'key' => $attacker->public], $attacker->secret);
+        $this->released($attacker, '1.1.0');
+        $this->channel->sync();
+        self::assertStringContainsString('pinned', implode("\n", $this->channel->run($this->installer)));
+        self::assertSame('1.0.0', $this->version());
+    }
+
     public function testRewrittenForkedOrForgedChronicleIsRefused(): void
     {
         $this->bootstrap();

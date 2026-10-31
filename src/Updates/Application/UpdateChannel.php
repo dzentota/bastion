@@ -100,7 +100,12 @@ final class UpdateChannel implements ReleaseAttestor
 
     public function allowsRotation(Manifest $previous, Manifest $next): bool
     {
-        return $this->state()->isActive($next->name->vendor(), $next->publisher);
+        $vendor = $next->name->vendor();
+        $s = $this->state();
+        // закреплённый ключ обязан быть в истории издателя в журнале: иначе самоподписанный
+        // bootstrap чужого ключа для «нового» издателя выдавался бы за ротацию
+        $pinnedKnown = $s->isActive($vendor, $previous->publisher) || $s->isRevoked($vendor, $previous->publisher);
+        return $pinnedKnown && $s->isActive($vendor, $next->publisher);
     }
 
     private function disableRevoked(): void
