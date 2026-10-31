@@ -39,7 +39,7 @@ final class CommentController
             return $this->view->theme('not-found', ['site' => ['name' => 'Bastion']], 403);
         }
         $entry = EntryId::tryParse(Input::string($request, 'entry', 36), $id) ? $this->entries->find($id) : null;
-        if ($entry === null || !$entry->isPublished()) {
+        if ($entry === null || !$entry->isPublished() || !$entry->type->inFeed()) {
             return $this->view->theme('not-found', ['site' => ['name' => 'Bastion']], 404);
         }
         $author = Input::string($request, 'author', 300);

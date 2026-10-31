@@ -28,7 +28,7 @@ final class DegradedModeHttpTest extends TestCase
         $author->get('/admin/login');
         $author->post('/admin/login', ['username' => 'writer', 'password' => 'another long passphrase here']);
         $author->get('/admin');
-        self::assertStringContainsString('Posts', $author->body());
+        self::assertStringContainsString('Content', $author->body());
         self::assertStringNotContainsString('Degraded Mode', $author->body());
     }
 }

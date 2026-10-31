@@ -58,12 +58,13 @@ final class EntryRepository
         );
     }
 
-    /** @return list<Entry> */
-    public function latest(int $limit, bool $publishedOnly): array
+    /** @return list<Entry> опубликованные — только указанного типа (по умолчанию посты) */
+    public function latest(int $limit, bool $publishedOnly, ?EntryType $type = null): array
     {
         $limit = max(1, min($limit, 100));
         $rows = $publishedOnly
-            ? $this->db->select('SELECT * FROM ?_entries WHERE status = ? ORDER BY published_at DESC LIMIT ?', EntryStatus::Published->value, $limit)
+            ? $this->db->select('SELECT * FROM ?_entries WHERE status = ? AND type = ? ORDER BY published_at DESC LIMIT ?',
+                EntryStatus::Published->value, ($type ?? EntryType::Post)->value, $limit)
             : $this->db->select('SELECT * FROM ?_entries ORDER BY updated_at DESC LIMIT ?', $limit);
         return array_map($this->hydrate(...), $rows);
     }

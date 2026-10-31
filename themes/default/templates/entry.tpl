@@ -1,11 +1,12 @@
 {% include "partials/head" %}
 <article>
   <h1>{{ entry.title }}</h1>
-  <time>{{ entry.date }}</time>
+  {% if comments_open %}<time>{{ entry.date }}</time>{% endif %}
   {{ entry.body }}
   {% if entry.categories %}<p class="terms">Categories: {% each entry.categories as t %}<a href="{{ t.url | url }}">{{ t.name }}</a> {% endeach %}</p>{% endif %}
   {% if entry.tags %}<p class="terms">Tags: {% each entry.tags as t %}<a href="{{ t.url | url }}">#{{ t.name }}</a> {% endeach %}</p>{% endif %}
 </article>
+{% if comments_open %}
 <section class="comments" id="comments">
   <h2>Comments</h2>
   {% each comments as c %}
@@ -31,4 +32,5 @@
   </form>
   {% endif %}
 </section>
+{% endif %}
 {% include "partials/foot" %}

@@ -49,7 +49,8 @@ final class PublicController
         return $this->view->theme('entry', [
             'site' => ['name' => 'Bastion'],
             'entry' => $this->summary($entry) + ['body' => $this->blocks->render($entry->blocks())] + $this->termLinks($entry),
-            'comments' => array_map(static fn (Comment $c) => [
+            'comments_open' => $entry->type->inFeed(),
+            'comments' => !$entry->type->inFeed() ? [] : array_map(static fn (Comment $c) => [
                 'author' => $c->author, 'lines' => $c->body->lines(), 'date' => $c->createdAt->format('Y-m-d'),
             ], $this->comments->approvedFor($entry->id)),
             'comment_form' => $form + [

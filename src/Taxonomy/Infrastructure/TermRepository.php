@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Bastion\Taxonomy\Infrastructure;
 
-use Bastion\Content\Domain\{EntryId, EntryStatus, Slug};
+use Bastion\Content\Domain\{EntryId, EntryStatus, EntryType, Slug};
 use Bastion\Taxonomy\Domain\{PageNumber, Term, TermKind, TermList};
 use HybridTM\Attributes\{AbuserStory, AssetId, Mitigation};
 use SecureDb\Db;
@@ -64,9 +64,9 @@ final class TermRepository
     {
         return self::strings($this->db->selectCol(
             'SELECT e.id FROM ?_entry_terms t JOIN ?_entries e ON e.id = t.entry_id
-             WHERE t.kind = ? AND t.slug = ? AND e.status = ?
+             WHERE t.kind = ? AND t.slug = ? AND e.status = ? AND e.type = ?
              ORDER BY e.published_at DESC LIMIT ? OFFSET ?',
-            $term->kind->value, $term->slug->toNative(), EntryStatus::Published->value,
+            $term->kind->value, $term->slug->toNative(), EntryStatus::Published->value, EntryType::Post->value,
             self::PAGE_SIZE + 1, ($page->toInt() - 1) * self::PAGE_SIZE,
         ));
     }

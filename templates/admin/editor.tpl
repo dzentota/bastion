@@ -1,14 +1,17 @@
 {% include "partials/head" %}
-<p><a href="/admin">← All posts</a></p>
-<h1>{% if entry %}Edit post{% else %}New post{% endif %}</h1>
+<p><a href="/admin">← All content</a></p>
+<h1>{% if entry %}Edit{% else %}New{% endif %} {% if is_page %}page{% else %}post{% endif %}</h1>
 {% include "partials/errors" %}
 <form method="post" action="{{ action | url }}" class="card">
   <input type="hidden" name="_token" value="{{ csrf | attr }}">
+  {% if not entry %}<input type="hidden" name="type" value="{{ values.type | attr }}">{% endif %}
   <label>Title <input name="title" value="{{ values.title | attr }}" required maxlength="200"></label>
   <label>Slug (address) <input name="slug" value="{{ values.slug | attr }}" required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxlength="96"></label>
+  {% if not is_page %}
   <label>Categories <input name="categories" value="{{ values.categories | attr }}" maxlength="600" placeholder="news, security"></label>
   <label>Tags <input name="tags" value="{{ values.tags | attr }}" maxlength="1600" placeholder="php, release"></label>
   <p class="hint">Comma-separated slugs (lowercase letters, digits, dashes). Up to 5 categories and 15 tags.</p>
+  {% else %}<p class="hint">Pages are permanent content outside the feed: no categories, tags or comments.</p>{% endif %}
   <fieldset>
     <legend>Content blocks</legend>
     {% each rows as row %}
