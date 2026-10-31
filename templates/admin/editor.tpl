@@ -56,6 +56,7 @@
   <button>{{ t.publish }}</button>
 </form>
 {% endif %}{% endif %}
+<form method="post" action="/admin/entries/{{ entry.id | attr }}/preview" class="inline"><input type="hidden" name="_token" value="{{ csrf | attr }}"><button class="link">{{ t.preview }}</button></form>
 <p><a href="/admin/entries/{{ entry.id | attr }}/revisions">{{ t.revision_history }}</a></p>
 {% endif %}
 {% if translations %}

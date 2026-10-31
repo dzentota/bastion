@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 namespace Bastion\Http;
 
-use Bastion\Content\Domain\{EntryId, Language, RevisionNumber, SiteLanguages, Slug};
+use Bastion\Content\Application\PreviewTokens;
+use Bastion\Content\Domain\{EntryId, Language, PreviewToken, RevisionNumber, SiteLanguages, Slug};
 use Bastion\Content\Infrastructure\{EntryRepository, MenuRepository, RevisionRepository};
 use Bastion\Content\Rendering\BlockHtmlRenderer;
 use Bastion\Audit\Domain\AuditTrail;
@@ -298,7 +299,9 @@ final class Kernel
             InstallController::class => factory(fn (ContainerInterface $c) => new InstallController(self::get($c, Installer::class), self::get($c, View::class), self::get($c, AppSensor::class))),
             AuthController::class => factory(fn (ContainerInterface $c) => new AuthController(self::get($c, TwoStepLogin::class), self::get($c, View::class))),
             EntryController::class => factory(fn (ContainerInterface $c) => new EntryController(self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, MediaRepository::class), self::get($c, AuditTrail::class), self::get($c, TermRepository::class), self::get($c, SecurityPosture::class), self::get($c, MenuRepository::class), self::get($c, SiteLanguages::class),
-                self::get($c, RevisionRepository::class), self::get($c, AccountRepository::class))),
+                self::get($c, RevisionRepository::class), self::get($c, AccountRepository::class),
+                self::get($c, PreviewTokens::class), self::get($c, PublicController::class))),
+            PreviewTokens::class => factory(fn (ContainerInterface $c) => new PreviewTokens(self::derivedKey($paths, 'preview'), self::get($c, ClockInterface::class))),
             RevisionRepository::class => factory(fn (ContainerInterface $c) => new RevisionRepository(
                 self::get($c, Db::class), self::derivedKey($paths, 'revisions'), self::get($c, ClockInterface::class),
             )),
@@ -376,6 +379,9 @@ final class Kernel
         $router->post('/admin/entries/{id}/translations', [EntryController::class, 'translate'])->where(['id' => EntryId::class])->middleware($staff);
         $router->get('/admin/entries/{id}/revisions', [EntryController::class, 'history'])->where(['id' => EntryId::class])->middleware($staff);
         $router->post('/admin/entries/{id}/revisions/{seq}/restore', [EntryController::class, 'restore'])->where(['id' => EntryId::class, 'seq' => RevisionNumber::class])->middleware($staff);
+        $router->get('/admin/entries/{id}/revisions/{seq}/diff', [EntryController::class, 'diff'])->where(['id' => EntryId::class, 'seq' => RevisionNumber::class])->middleware($staff);
+        $router->post('/admin/entries/{id}/preview', [EntryController::class, 'startPreview'])->where(['id' => EntryId::class])->middleware($staff);
+        $router->get('/admin/preview/{token}', [EntryController::class, 'preview'])->where(['token' => PreviewToken::class])->middleware($staff);
 
         $router->get('/admin/media', [MediaController::class, 'index'])->middleware($staff);
         $router->post('/admin/media', [MediaController::class, 'store'])->middleware($staff);

@@ -166,5 +166,9 @@
     "restored_from": "restored from",
     "revision_live": "Live",
     "revision_current": "Current",
-    "restore_revision": "Restore"
+    "restore_revision": "Restore",
+    "preview": "Preview",
+    "compare_previous": "Compare with previous",
+    "diff_too_large": "These revisions are too large to compare line by line; both versions are shown in full.",
+    "diff_no_changes": "No changes in title, address or content."
 }

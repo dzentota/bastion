@@ -5,6 +5,8 @@ namespace Bastion\Http\Controller;
 
 use Bastion\Audit\Domain\{AuditAction, AuditTrail};
 use Bastion\Content\Domain\{Entry, EntryId, EntryType, Language, MenuPosition, Revision, RevisionNumber, SiteLanguages, Slug, Title};
+use Bastion\Content\Application\PreviewTokens;
+use Bastion\Content\Domain\{PreviewToken, RevisionDiff};
 use Bastion\Content\Infrastructure\RevisionRepository;
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
 use Bastion\Content\Domain\Block\{Block, BlockList, Heading, Image, InvalidBlock, Paragraph, Quote};
@@ -41,6 +43,8 @@ final class EntryController
         private readonly SiteLanguages $languages,
         private readonly RevisionRepository $revisions,
         private readonly AccountRepository $accounts,
+        private readonly PreviewTokens $previews,
+        private readonly PublicController $public,
     ) {
     }
 
@@ -174,6 +178,57 @@ final class EntryController
         $this->revisions->record($entry, $old->title, $old->slug, $old->blocks, $this->account($request)->getId(), $old->seq);
         $this->audit->record(AuditAction::RevisionRestored, $this->account($request)->getId(), $entry->id->toNative(), $this->ip($request));
         return $this->view->redirect('/admin/entries/' . $entry->id->toNative() . '/edit');
+    }
+
+    /** Сравнение ревизии с предыдущей. */
+    public function diff(ServerRequestInterface $request, EntryId $id, RevisionNumber $seq): ResponseInterface
+    {
+        $entry = $this->entries->find($id);
+        if ($entry === null || !$this->mayEdit($request, $entry)) {
+            return $this->view->admin($request, 'not-found', [], 404);
+        }
+        $new = $this->revisions->find($entry->id, $seq->toInt());
+        $old = $seq->toInt() > 1 ? $this->revisions->find($entry->id, $seq->toInt() - 1) : null;
+        if ($new === null || $old === null) {
+            return $this->view->admin($request, 'not-found', [], 404);
+        }
+        $diff = RevisionDiff::between($old, $new);
+        return $this->view->admin($request, 'revision-diff', [
+            'entry' => ['id' => $entry->id->toNative(), 'title' => $entry->title()],
+            'old' => (string) $old->seq, 'new' => (string) $new->seq,
+            'too_large' => $diff->tooLarge, 'changed' => $diff->changed(),
+            'lines' => array_map(static fn (array $o) => ['text' => $o['text'], 'add' => $o['op'] === 'add', 'del' => $o['op'] === 'del'], $diff->ops),
+        ]);
+    }
+
+    /** Ссылка предпросмотра последней ревизии: короткоживущий токен этого пользователя. */
+    public function startPreview(ServerRequestInterface $request, EntryId $id): ResponseInterface
+    {
+        $entry = $this->entries->find($id);
+        if ($entry === null || !$this->mayEdit($request, $entry)) {
+            return $this->view->admin($request, 'not-found', [], 404);
+        }
+        $this->revisions->ensureBaseline($entry);
+        $head = $this->revisions->head($entry->id);
+        if ($head === null) {
+            return $this->view->admin($request, 'not-found', [], 404);
+        }
+        return $this->view->redirect('/admin/preview/' . $this->previews->issue($head->id, $this->account($request)->getId())->toNative());
+    }
+
+    public function preview(ServerRequestInterface $request, PreviewToken $token): ResponseInterface
+    {
+        $account = $this->account($request);
+        $revisionId = $this->previews->verify($token, $account->getId());
+        $rev = $revisionId !== null ? $this->revisions->findById($revisionId) : null;
+        $entry = $rev !== null ? $this->entries->find($rev->entryId) : null;
+        if ($rev === null || $entry === null || !$this->mayEdit($request, $entry)) {
+            $this->sensor->event(DetectionPoint::IE2, ActorKey::ip($this->ip($request)));
+            return $this->view->admin($request, 'not-found', [], 404);
+        }
+        $transient = Entry::restore($entry->id, $entry->type, $entry->lang, $entry->translationGroup, $rev->title, $rev->slug, $rev->blocks,
+            $entry->status(), $entry->authorId, $entry->publishedAt());
+        return $this->public->preview($transient);
     }
 
     /** @var array<string, string> */

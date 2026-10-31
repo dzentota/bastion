@@ -35,7 +35,8 @@ final class SecurityHeaders implements MiddlewareInterface
         $response = ($response->hasHeader('Content-Security-Policy') ? $response : $csp->injectCSPHeader($response))
             ->withHeader('X-Content-Type-Options', 'nosniff')
             ->withHeader('X-Frame-Options', 'DENY')
-            ->withHeader('Referrer-Policy', 'same-origin')
+            // обработчик может только ужесточить политику (предпросмотр — no-referrer), но не ослабить
+            ->withHeader('Referrer-Policy', $response->getHeaderLine('Referrer-Policy') === 'no-referrer' ? 'no-referrer' : 'same-origin')
             ->withHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
             ->withHeader('Cross-Origin-Opener-Policy', 'same-origin')
             ->withHeader('Cross-Origin-Resource-Policy', 'same-origin');

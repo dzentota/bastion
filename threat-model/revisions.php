@@ -30,4 +30,31 @@ return static function (ThreatModel $model): void {
     $s->assetIds = ['bastion-app'];
     $s->requiredCwes = ['CWE-200'];
     $model->addAbuseCase($s);
+
+    $s = new AbuseCase('preview-token-abuse', 'Forge, replay or share a preview link');
+    $s->asA = 'anonymous attacker or another staff member';
+    $s->iWant = 'forge a preview token, reuse an old one, or open a colleague\'s preview link';
+    $s->soThat = 'read unpublished revisions';
+    $s->actorId = 'malicious-author';
+    $s->assetIds = ['bastion-app'];
+    $s->requiredCwes = ['CWE-345', 'CWE-613', 'CWE-639'];
+    $model->addAbuseCase($s);
+
+    $s = new AbuseCase('preview-exposure', 'Leak preview pages through caches, search engines or Referer');
+    $s->asA = 'anonymous attacker';
+    $s->iWant = 'find preview URLs in search results, shared caches or Referer headers of outgoing links';
+    $s->soThat = 'read unpublished revisions';
+    $s->actorId = 'anonymous-attacker';
+    $s->assetIds = ['bastion-app'];
+    $s->requiredCwes = ['CWE-200'];
+    $model->addAbuseCase($s);
+
+    $s = new AbuseCase('diff-dos', 'Exhaust memory with a huge revision comparison');
+    $s->asA = 'malicious author';
+    $s->iWant = 'save two very long revisions and open their comparison repeatedly';
+    $s->soThat = 'the quadratic diff exhausts PHP memory or CPU';
+    $s->actorId = 'malicious-author';
+    $s->assetIds = ['bastion-app'];
+    $s->requiredCwes = ['CWE-400'];
+    $model->addAbuseCase($s);
 };

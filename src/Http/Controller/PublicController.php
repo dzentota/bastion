@@ -97,6 +97,25 @@ final class PublicController
         ];
     }
 
+    /**
+     * Предпросмотр ревизии в теме сайта. Комментарии выключены; страница не индексируется,
+     * не кэшируется и не передаёт Referer.
+     */
+    #[\HybridTM\Attributes\AbuserStory('preview-exposure')]
+    #[\HybridTM\Attributes\Mitigation(cwe: 'CWE-200', description: 'Preview responses carry X-Robots-Tag noindex, Cache-Control no-store and Referrer-Policy no-referrer, and live under /admin behind RequireStaff')]
+    public function preview(Entry $transient): ResponseInterface
+    {
+        $res = $this->view->theme('entry', [
+            'site' => $this->site->for($transient->lang),
+            'preview' => true,
+            'entry' => $this->summary($transient) + ['body' => $this->blocks->render($transient->blocks())] + $this->termLinks($transient),
+            'comments_open' => false,
+            'comments' => [],
+            'comment_form' => [],
+        ]);
+        return $res->withHeader('X-Robots-Tag', 'noindex, nofollow')->withHeader('Cache-Control', 'no-store')->withHeader('Referrer-Policy', 'no-referrer');
+    }
+
     public function notFound(): ResponseInterface
     {
         return $this->view->theme('not-found', ['site' => $this->site->default()], 404);

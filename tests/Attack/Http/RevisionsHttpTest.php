@@ -129,6 +129,54 @@ final class RevisionsHttpTest extends TestCase
         self::assertSame(2, $this->revisionCount($id));
     }
 
+    public function testPreviewShowsTheLatestRevisionOnlyToItsRequester(): void
+    {
+        $id = $this->create('page', 'Live text');
+        $this->publish($id);
+        $this->save($id, 'Secret <b>draft</b>');
+
+        $this->h->get("/admin/entries/{$id}/edit");
+        $start = $this->h->post("/admin/entries/{$id}/preview", []);
+        $url = $start->getHeaderLine('Location');
+        self::assertMatchesRegularExpression('~^/admin/preview/[A-Za-z0-9_-]{44,}$~', $url);
+
+        $res = $this->h->get($url);
+        self::assertSame(200, $res->getStatusCode());
+        $page = (string) $res->getBody();
+        self::assertStringContainsString('Secret &lt;b&gt;draft&lt;/b&gt;', $page);
+        self::assertStringContainsString('<meta name="robots" content="noindex, nofollow">', $page);
+        self::assertStringNotContainsString('<form method="post" action="/comments"', $page);
+        self::assertSame('noindex, nofollow', $res->getHeaderLine('X-Robots-Tag'));
+        self::assertSame('no-store', $res->getHeaderLine('Cache-Control'));
+        self::assertSame('no-referrer', $res->getHeaderLine('Referrer-Policy'));
+        self::assertStringNotContainsString('Secret', (string) $this->h->fresh()->get('/en/page')->getBody());
+
+        // аноним и другой сотрудник по той же ссылке ничего не видят
+        self::assertSame('/admin/login', $this->h->fresh()->get($url)->getHeaderLine('Location'));
+        $u = Username::fromNative('editor2');
+        (new AccountRepository($this->db, KeyFactory::loadEncryptionKey($this->h->paths->encryptionKey())))
+            ->create($u, NewPassword::forUser('another long passphrase here', $u), Role::Author);
+        $other = $this->h->fresh();
+        $other->get('/admin/login');
+        $other->post('/admin/login', ['username' => 'editor2', 'password' => 'another long passphrase here']);
+        self::assertSame(404, $other->get($url)->getStatusCode());
+
+        // подделанная подпись
+        self::assertSame(404, $this->h->get(substr($url, 0, -3) . 'AAA')->getStatusCode());
+    }
+
+    public function testDiffShowsChangesEscaped(): void
+    {
+        $id = $this->create('page', 'Old title');
+        $this->save($id, 'New <script>x</script>');
+        $this->h->get("/admin/entries/{$id}/revisions/2/diff");
+        $page = $this->h->body();
+        self::assertStringContainsString('<del>− # Old title</del>', $page);
+        self::assertStringContainsString('<ins>+ # New &lt;script&gt;x&lt;/script&gt;</ins>', $page);
+        self::assertStringContainsString('<span>  paragraph: Body</span>', $page);
+        self::assertSame(404, $this->h->get("/admin/entries/{$id}/revisions/1/diff")->getStatusCode(), 'у первой ревизии нет предыдущей');
+    }
+
     private function create(string $slug, string $title): string
     {
         $this->h->get('/admin/entries/new?type=page');
