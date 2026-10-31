@@ -3,11 +3,11 @@ declare(strict_types=1);
 
 namespace Bastion\Content\Application;
 
-use Bastion\Content\Domain\Block\{BlockList, Code, Heading, Paragraph, Quote, Table};
+use Bastion\Content\Domain\Block\{BlockList, Code, Heading, Paragraph, Quote, Table, ThreatModelEmbed};
 
 /**
  * Подмножество Markdown из docs/adr → блоки: заголовки, абзацы, списки (абзац с «•»),
- * цитаты, блоки кода, таблицы. Строчная разметка снимается: `код`, **жирный**, [текст](url) → «текст (url)».
+ * цитаты, блоки кода, таблицы, «::: threatmodel вид» — встроенная модель угроз. Строчная разметка снимается: `код`, **жирный**, [текст](url) → «текст (url)».
  * HTML в исходнике не интерпретируется — становится текстом, как любой ввод.
  */
 final class MarkdownBlocks
@@ -37,6 +37,11 @@ final class MarkdownBlocks
                 if (trim(implode('', $code)) !== '') {
                     $blocks[] = Code::fromArray(['language' => in_array($m[1], Code::LANGUAGES, true) ? $m[1] : 'text', 'text' => implode("\n", $code)]);
                 }
+                continue;
+            }
+            if (preg_match('/^:::\s*threatmodel\s+([a-z]+)\s*$/', $line, $m)) {
+                $flush();
+                $blocks[] = ThreatModelEmbed::fromArray(['view' => $m[1]]);
                 continue;
             }
             if (preg_match('/^(#{1,4})\s+(.+)$/', $line, $m)) {

@@ -1,0 +1,24 @@
+# Bastion with Caddy (automatic HTTPS) + PHP-FPM — the simplest setup WITHOUT a CDN.
+# With a CDN, prefer deploy/nginx.conf: client addresses must come from the CDN's ranges only,
+# and that has to be checked (see docs/deploy.md, "Client addresses behind a CDN").
+docs.example.org {
+	root * /srv/bastion/current/public
+	encode zstd gzip
+
+	@assets path /assets/*
+	handle @assets {
+		header Cache-Control "public, max-age=3600, must-revalidate"
+		file_server
+	}
+
+	handle {
+		# every non-asset request goes to the application front controller
+		rewrite * /index.php
+		php_fastcgi unix//run/php/bastion.sock
+	}
+
+	header -Server
+	request_body {
+		max_size 12MB
+	}
+}

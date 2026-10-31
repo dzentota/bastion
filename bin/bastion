@@ -88,6 +88,12 @@ switch ($cmd) {
             echo $line, "\n";
         }
         break;
+    case 'docs:import-site':
+        // ADR-0025: стартовое содержимое из docs/site/<язык>/; существующие страницы не трогаются
+        foreach ((new \Bastion\Http\Kernel($paths, true))->importSite() as $line) {
+            echo $line, "\n";
+        }
+        break;
     case 'updates:run':
         // Автообновления расширений (ADR-0014): запускать по cron. Ничего не ставится без записи в журнале.
         try {
@@ -100,6 +106,6 @@ switch ($cmd) {
         }
         break;
     default:
-        echo "Usage:\n  bin/bastion unlock-account <username>\n  bin/bastion unlock-ip <ip>\n  bin/bastion reset-link <username>\n  bin/bastion audit:verify\n  bin/bastion updates:run\n  bin/bastion migrate\n  bin/bastion docs:sync-adr [language]\n";
+        echo "Usage:\n  bin/bastion unlock-account <username>\n  bin/bastion unlock-ip <ip>\n  bin/bastion reset-link <username>\n  bin/bastion audit:verify\n  bin/bastion updates:run\n  bin/bastion migrate\n  bin/bastion docs:sync-adr [language]\n  bin/bastion docs:import-site\n";
         exit($cmd === '' ? 0 : 1);
 }

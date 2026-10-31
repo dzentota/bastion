@@ -87,6 +87,16 @@ final class Kernel
         self::get($this->c, AfterResponse::class)->run(static fn (\Throwable $e) => $log->error('after_response.failed', ['type' => $e::class]));
     }
 
+    /** @return list<string> bin/bastion docs:import-site (ADR-0025) */
+    public function importSite(): array
+    {
+        $c = $this->c;
+        return (new \Bastion\Content\Application\SiteContentImport(
+            self::get($c, EntryRepository::class), self::get($c, RevisionRepository::class), self::get($c, PageTree::class), self::get($c, MenuRepository::class),
+            self::get($c, SearchIndex::class), self::get($c, SiteLanguages::class), self::get($c, AuditTrail::class), self::get($c, ClockInterface::class),
+        ))->import(self::get($c, Paths::class)->root);
+    }
+
     /** @return list<string> bin/bastion docs:sync-adr (ADR-0025) */
     public function syncAdrs(string $sourceLanguage): array
     {
