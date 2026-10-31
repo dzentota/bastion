@@ -8,7 +8,7 @@ use Bastion\Extensions\Domain\{ExtCapability, ExtensionName, InstalledExtension,
 use Bastion\Extensions\Infrastructure\ExtensionRegistry;
 
 /**
- * Установка: подпись → закреплённый ключ → чтение архива → Static Gate → атомарная запись → реестр.
+ * Установка: подпись → закреплённый ключ → журнал обновлений (если настроен) → чтение архива → Static Gate → атомарная запись → реестр.
  * Ничего из пакета не исполняется при установке (в отличие от install-триггеров Airship).
  * Новая версия устанавливается выключенной, если просит новые права; иначе сохраняет выданные.
  */
@@ -20,6 +20,7 @@ final class ExtensionInstaller
         private readonly ExtensionRegistry $registry,
         private readonly string $extensionsDir,
         private readonly AuditTrail $audit,
+        private readonly ?ReleaseAttestor $attestor = null,
     ) {
     }
 
@@ -32,9 +33,11 @@ final class ExtensionInstaller
             throw new InvalidPackage('Signature does not match the publisher key in the package');
         }
         $previous = $this->registry->find($m->name);
-        if ($previous !== null && !hash_equals($previous->manifest->publisher->toNative(), $m->publisher->toNative())) {
+        if ($previous !== null && !hash_equals($previous->manifest->publisher->toNative(), $m->publisher->toNative())
+            && !($this->attestor?->allowsRotation($previous->manifest, $m) ?? false)) {
             throw new InvalidPackage('This extension is pinned to a different publisher key. Refusing to replace it.');
         }
+        $this->attestor?->attest($m, $zipBytes);
         if ($previous !== null && !$m->version->isNewerThan($previous->manifest->version)) {
             throw new InvalidPackage('Only newer versions can be installed over an existing extension');
         }

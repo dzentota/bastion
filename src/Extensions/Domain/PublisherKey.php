@@ -26,9 +26,11 @@ final class PublisherKey implements Typed
         return $r;
     }
 
+    /** @return non-empty-string */
     public function raw(): string
     {
-        return (string) base64_decode((string) $this->value, true);
+        $raw = base64_decode((string) $this->value, true);
+        return is_string($raw) && $raw !== '' ? $raw : throw new \LogicException('PublisherKey holds an invalid value');
     }
 
     /** Отпечаток для сверки с сайтом издателя: 16 групп по 4 hex-символа. */

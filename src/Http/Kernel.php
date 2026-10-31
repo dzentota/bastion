@@ -18,6 +18,8 @@ use Bastion\Mail\{Mailer, SmtpConfig, SmtpMailer, UnconfiguredMailer};
 use Bastion\Shared\Application\AfterResponse;
 use Bastion\Extensions\Application\{ExtensionInstaller, ExtensionLoader, HelperCollector, PackageReader, StaticGate};
 use Bastion\Taxonomy\Infrastructure\TermRepository;
+use Bastion\Updates\Application\{UpdateChannel, UpdateConfig, UpdateTransport};
+use Bastion\Updates\Infrastructure\{HttpUpdateTransport, LedgerStore};
 use Bastion\Extensions\Infrastructure\{ExtensionRegistry, PublishedContentReader};
 use Bastion\Http\Controller\{AuditController, AuthController, ExtensionController, PasswordResetController, CommentController, EntryController, TermController, InstallController, MediaController, PublicController};
 use dzentota\Router\Middleware\HoneypotMiddleware;
@@ -77,6 +79,19 @@ final class Kernel
         self::get($this->c, AfterResponse::class)->run(static fn (\Throwable $e) => $log->error('after_response.failed', ['type' => $e::class]));
     }
 
+    /**
+     * Синхронизация журнала и установка обновлений (bin/bastion updates:run, по cron).
+     * @return list<string>
+     * @throws \Bastion\Updates\Domain\InvalidRecord
+     */
+    public function runUpdates(): array
+    {
+        $channel = self::updateChannel($this->c, self::get($this->c, Paths::class))
+            ?? throw new \Bastion\Updates\Domain\InvalidRecord('Update channel is not configured (updates.* in config.json)');
+        $n = $channel->sync();
+        return ["Ledger: {$n} new record(s)", ...$channel->run(self::get($this->c, ExtensionInstaller::class))];
+    }
+
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         /** @var Router $router */
@@ -118,7 +133,13 @@ final class Kernel
             ExtensionRegistry::class => factory(fn (ContainerInterface $c) => new ExtensionRegistry(self::get($c, Db::class), self::derivedKey($paths, 'extensions'))),
             ExtensionInstaller::class => factory(fn (ContainerInterface $c) => new ExtensionInstaller(
                 new PackageReader(), new StaticGate(), self::get($c, ExtensionRegistry::class), $paths->extensions(), self::get($c, AuditTrail::class),
+                self::updateChannel($c, $paths),
             )),
+            UpdateTransport::class => factory(function (ContainerInterface $c): UpdateTransport {
+                $http = HttpClient::create();
+                $http->setTimeout(20);
+                return new HttpUpdateTransport($http, self::get($c, Psr17Factory::class));
+            }),
             ExtensionController::class => factory(fn (ContainerInterface $c) => new ExtensionController(
                 self::get($c, ExtensionInstaller::class), self::get($c, ExtensionRegistry::class), self::get($c, View::class), self::get($c, AppSensor::class),
             )),
@@ -347,6 +368,20 @@ final class Kernel
     {
         $service = $c->get($id);
         return $service instanceof $id ? $service : throw new \LogicException("Container returned unexpected type for {$id}");
+    }
+
+    /** Канал обновлений, если он настроен в config.json (ADR-0014); иначе Degraded Mode. */
+    private static function updateChannel(ContainerInterface $c, Paths $paths): ?UpdateChannel
+    {
+        if (!$paths->isInstalled()) {
+            return null;
+        }
+        $cfg = ConfigLoaderFactory::createFromJsonAndEnv($paths->config(), 'BASTION_', false);
+        $config = UpdateConfig::fromRaw(static fn (string $k): mixed => $cfg->getRaw($k, null));
+        return $config === null ? null : new UpdateChannel(
+            $config, self::get($c, UpdateTransport::class), new LedgerStore(self::get($c, Db::class), self::derivedKey($paths, 'ledger')),
+            self::get($c, ExtensionRegistry::class), self::get($c, AuditTrail::class), self::get($c, LoggerInterface::class),
+        );
     }
 
     /** Отдельный ключ на каждое назначение, выведенный из мастер-ключа var/keys/cache.key. */

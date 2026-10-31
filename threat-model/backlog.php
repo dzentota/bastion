@@ -7,5 +7,4 @@ declare(strict_types=1);
  * и тестом атаки. Гейт падает и в обратную сторону — если история из бэклога уже покрыта.
  */
 return [
-    'update-hijack',         // Updates (Chronicle)
 ];

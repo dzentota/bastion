@@ -67,7 +67,18 @@ switch ($cmd) {
         $v = $audit->verify();
         echo ($v->intact ? 'OK: ' : 'TAMPERED: ') . $v->reason . " ({$v->entries} entries verified)\n";
         exit($v->intact ? 0 : 2);
+    case 'updates:run':
+        // Автообновления расширений (ADR-0014): запускать по cron. Ничего не ставится без записи в журнале.
+        try {
+            foreach ((new \Bastion\Http\Kernel($paths, true))->runUpdates() as $line) {
+                echo $line, "\n";
+            }
+        } catch (\Bastion\Updates\Domain\InvalidRecord $e) {
+            fwrite(STDERR, 'Update channel refused: ' . $e->getMessage() . "\n");
+            exit(2);
+        }
+        break;
     default:
-        echo "Usage:\n  bin/bastion unlock-account <username>\n  bin/bastion unlock-ip <ip>\n  bin/bastion reset-link <username>\n  bin/bastion audit:verify\n";
+        echo "Usage:\n  bin/bastion unlock-account <username>\n  bin/bastion unlock-ip <ip>\n  bin/bastion reset-link <username>\n  bin/bastion audit:verify\n  bin/bastion updates:run\n";
         exit($cmd === '' ? 0 : 1);
 }

@@ -23,5 +23,6 @@ enum AuditAction: string
     case ExtensionInstalled = 'extension_installed';
     case ExtensionEnabled = 'extension_enabled';
     case ExtensionDisabled = 'extension_disabled';
+    case UpdateRejected = 'update_rejected';
     case EmergencyUnlock = 'emergency_unlock';
 }

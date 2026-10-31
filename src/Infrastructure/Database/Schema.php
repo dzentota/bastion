@@ -98,6 +98,12 @@ final class Schema
             ){$suffix}",
             // листинг термина ищет по (kind, slug) — без полного сканирования
             "CREATE INDEX " . ($driver === 'mysql' ? '' : 'IF NOT EXISTS ') . "?_entry_terms_by_term ON ?_entry_terms (kind, slug, entry_id)",
+            "CREATE TABLE IF NOT EXISTS ?_ledger (
+                seq INTEGER PRIMARY KEY,
+                hash VARCHAR(64) NOT NULL,
+                contents {$text} NOT NULL,
+                mac CHAR(64) NOT NULL
+            ){$suffix}",
             "CREATE TABLE IF NOT EXISTS ?_audit (
                 seq INTEGER PRIMARY KEY,
                 at INTEGER NOT NULL,

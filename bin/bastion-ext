@@ -43,7 +43,27 @@ switch ($cmd) {
         file_put_contents($c . '.sig', PackageSignature::sign((string) file_get_contents($c), (string) $secret) . "\n");
         echo "Wrote {$c} and {$c}.sig\n";
         break;
+    case 'record':
+        // record <secret-key-file> key-append|key-revoke <publisher> <key>
+        // record <secret-key-file> release <out.zip> <vendor/package> <version>
+        $secret = is_file($a) ? base64_decode(trim((string) file_get_contents($a)), true) : false;
+        $type = $b;
+        $rest = array_slice($argv, 4);
+        $record = match (true) {
+            $secret === false => null,
+            in_array($type, ['key-append', 'key-revoke'], true) && count($rest) === 2 => ['type' => $type, 'publisher' => $rest[0], 'key' => $rest[1]],
+            $type === 'release' && count($rest) === 3 && is_file($rest[0]) => ['type' => 'release', 'publisher' => explode('/', $rest[1])[0],
+                'package' => $rest[1], 'version' => $rest[2], 'digest' => bin2hex(PackageSignature::digest((string) file_get_contents($rest[0])))],
+            default => null,
+        };
+        if ($record === null) {
+            fwrite(STDERR, "Usage:\n  bastion-ext record <secret-key-file> key-append|key-revoke <publisher> <key>\n  bastion-ext record <secret-key-file> release <out.zip> <vendor/package> <version>\n");
+            exit(1);
+        }
+        // конверт публикуется в Chronicle издателем (POST /chronicle/publish)
+        echo \Bastion\Updates\Domain\LedgerRecord::sign($record, (string) $secret), "\n";
+        break;
     default:
-        echo "Usage:\n  bastion-ext keygen <secret-key-file>\n  bastion-ext pack <extension-dir> <secret-key-file> <out.zip>\n";
+        echo "Usage:\n  bastion-ext keygen <secret-key-file>\n  bastion-ext pack <extension-dir> <secret-key-file> <out.zip>\n  bastion-ext record <secret-key-file> <type> ...\n";
         exit($cmd === '' ? 0 : 1);
 }
