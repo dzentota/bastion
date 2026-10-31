@@ -32,6 +32,7 @@ final class EntryController
         private readonly MediaRepository $media,
         private readonly AuditTrail $audit,
         private readonly TermRepository $terms,
+        private readonly \Bastion\SecurityMonitoring\Application\SecurityPosture $posture,
     ) {
     }
 
@@ -42,7 +43,11 @@ final class EntryController
             'id' => $e->id->toNative(), 'title' => $e->title(), 'status' => $e->status()->value,
             'url' => '/' . $e->slug()->toNative(), 'published' => $e->isPublished(),
         ], $this->entries->latest(100, false));
-        return $this->view->admin($request, 'dashboard', ['entries' => $rows, 'me' => ['name' => $account->username]]);
+        return $this->view->admin($request, 'dashboard', [
+            'entries' => $rows, 'me' => ['name' => $account->username],
+            // детали конфигурации — только тем, кто может её менять
+            'notices' => $account->role->can(Capability::SecurityView) ? $this->posture->notices() : [],
+        ]);
     }
 
     public function create(ServerRequestInterface $request): ResponseInterface

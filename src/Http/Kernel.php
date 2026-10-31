@@ -32,6 +32,7 @@ use Bastion\IdentityAccess\Application\{PasswordVerifier, TwoStepLogin};
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
 use Bastion\Infrastructure\Database\{Connection, Tables};
 use Bastion\Installation\{DbDriver, DbHost, DbName, Installer, Paths};
+use Bastion\SecurityMonitoring\Application\SecurityPosture;
 use Bastion\SecurityMonitoring\Domain\AppSensor;
 use Bastion\SecurityMonitoring\Infrastructure\{DbAppSensor, LogOnlyAppSensor};
 use Bastion\Shared\Infrastructure\{FileLogger, SystemClock};
@@ -86,9 +87,19 @@ final class Kernel
      */
     public function runUpdates(): array
     {
-        $channel = self::updateChannel($this->c, self::get($this->c, Paths::class))
+        $paths = self::get($this->c, Paths::class);
+        $channel = self::updateChannel($this->c, $paths)
             ?? throw new \Bastion\Updates\Domain\InvalidRecord('Update channel is not configured (updates.* in config.json)');
-        $n = $channel->sync();
+        // итог прогона виден в админке (SecurityPosture); файл содержит только время и флаг
+        $status = static fn (bool $ok) => file_put_contents($paths->updateStatus(), json_encode(['at' => time(), 'ok' => $ok], JSON_THROW_ON_ERROR), LOCK_EX);
+        try {
+            $n = $channel->sync();
+        } catch (\Bastion\Updates\Domain\InvalidRecord $e) {
+            $status(false);
+            self::get($this->c, LoggerInterface::class)->error('update.ledger_refused', ['reason' => $e->getMessage()]);
+            throw $e;
+        }
+        $status(true);
         return ["Ledger: {$n} new record(s)", ...$channel->run(self::get($this->c, ExtensionInstaller::class))];
     }
 
@@ -255,12 +266,21 @@ final class Kernel
             )),
             InstallController::class => factory(fn (ContainerInterface $c) => new InstallController(self::get($c, Installer::class), self::get($c, View::class), self::get($c, AppSensor::class))),
             AuthController::class => factory(fn (ContainerInterface $c) => new AuthController(self::get($c, TwoStepLogin::class), self::get($c, View::class))),
-            EntryController::class => factory(fn (ContainerInterface $c) => new EntryController(self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, MediaRepository::class), self::get($c, AuditTrail::class), self::get($c, TermRepository::class))),
+            EntryController::class => factory(fn (ContainerInterface $c) => new EntryController(self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, ClockInterface::class), self::get($c, MediaRepository::class), self::get($c, AuditTrail::class), self::get($c, TermRepository::class), self::get($c, SecurityPosture::class))),
             TermRepository::class => factory(fn (ContainerInterface $c) => new TermRepository(self::get($c, Db::class))),
             TermController::class => factory(fn (ContainerInterface $c) => new TermController(
                 self::get($c, TermRepository::class), self::get($c, EntryRepository::class), self::get($c, View::class), self::get($c, AppSensor::class),
             )),
 
+            SecurityPosture::class => factory(function (ContainerInterface $c) use ($paths): SecurityPosture {
+                $cfg = ConfigLoaderFactory::createFromJsonAndEnv($paths->config(), 'BASTION_', false);
+                $raw = is_file($paths->updateStatus()) ? json_decode((string) file_get_contents($paths->updateStatus()), true, 2) : null;
+                $last = is_array($raw) && is_int($raw['at'] ?? null) && is_bool($raw['ok'] ?? null) ? ['at' => $raw['at'], 'ok' => $raw['ok']] : null;
+                return new SecurityPosture(
+                    is_string($cfg->getRaw('updates.chronicle', null)), $last, self::get($c, MediaStorage::class),
+                    self::get($c, HmacAuditTrail::class)->latest(200), self::get($c, ClockInterface::class)->now()->getTimestamp(),
+                );
+            }),
             Router::class => factory(fn (ContainerInterface $c) => self::router($c, $paths, $https, $devCookies)),
         ]);
         $b->addDefinitions($overrides);

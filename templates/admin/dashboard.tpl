@@ -4,6 +4,9 @@
   <span>Signed in as {{ me.name }}</span>
   <form method="post" action="/admin/logout"><input type="hidden" name="_token" value="{{ csrf | attr }}"><button class="link">Sign out</button></form>
 </header>
+{% each notices as n %}
+<div class="notice notice-{{ n.level | attr }}" role="status"><strong>{{ n.title }}</strong><p>{{ n.detail }}</p></div>
+{% endeach %}
 <h1>Posts</h1>
 <p><a class="button" href="/admin/entries/new">New post</a> <a href="/admin/media">Media library</a> · <a href="/admin/comments">Comments</a> · <a href="/admin/audit">Audit</a> · <a href="/admin/extensions">Extensions</a></p>
 <table>

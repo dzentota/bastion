@@ -16,6 +16,7 @@ final class Paths
     public function installToken(): string { return $this->var('install.token'); }
     public function encryptionKey(): string { return $this->var('keys/encryption.key'); }
     public function cacheKey(): string { return $this->var('keys/cache.key'); }
+    public function updateStatus(): string { return $this->var('updates.status'); }
     public function auditAnchor(): string { return $this->var('audit.anchor'); }
     public function templateCache(): string { return $this->var('cache/templates'); }
     public function sqlite(): string { return $this->var('bastion.sqlite'); }
