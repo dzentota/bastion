@@ -69,7 +69,7 @@ switch ($cmd) {
         exit($v->intact ? 0 : 2);
     case 'migrate':
         // Догоняет схему после обновления Bastion: только CREATE ... IF NOT EXISTS, данные не трогаются.
-        \Bastion\Infrastructure\Database\Schema::migrate($db, $config['db']['driver']);
+        \Bastion\Infrastructure\Database\Schema::migrate($db, $config['db']['driver'], $paths->schemaVersion());
         echo "Schema is up to date.\n";
         break;
     case 'updates:run':

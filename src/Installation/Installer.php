@@ -80,7 +80,7 @@ final class Installer
             @chmod($this->paths->sqlite(), 0600);
         }
 
-        Schema::migrate($conn, $db['driver']->toNative());
+        Schema::migrate($conn, $db['driver']->toNative(), $this->paths->schemaVersion());
         $encKey = KeyFactory::generateEncryptionKey();
         KeyFactory::save($encKey, $this->paths->encryptionKey());
         @chmod($this->paths->encryptionKey(), 0600);

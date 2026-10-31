@@ -8,8 +8,9 @@ use SecureDb\Db;
 
 /**
  * Схема БД. DDL совместим с SQLite и MySQL (только переносимые типы).
- * Все операторы идемпотентны: migrate() безопасно запускать на рабочей базе (bin/bastion migrate)
- * — так новые таблицы появляются на уже установленных сайтах. Изменение существующих колонок
+ * Все операторы идемпотентны: migrate() безопасно запускать на рабочей базе. Kernel вызывает
+ * ensureCurrent() на каждом запросе, так что новые таблицы появляются сами после выкладки кода
+ * (bin/bastion migrate остаётся для ручного запуска). Изменение существующих колонок
  * этим путём не поддерживается.
  */
 final class Schema
@@ -126,7 +127,37 @@ final class Schema
         ];
     }
 
-    public static function migrate(Db $db, string $driver): void
+    /** Версия схемы = хэш DDL: меняется сама при любом изменении statements(), вручную не поднимается. */
+    public static function version(string $driver): string
+    {
+        return hash('sha256', implode("\n", self::statements($driver)));
+    }
+
+    /**
+     * Автомиграция при смене версии кода: одно чтение файла на запрос; при расхождении —
+     * migrate() под файловой блокировкой (операторы идемпотентны, гонка безопасна).
+     */
+    public static function ensureCurrent(Db $db, string $driver, string $versionFile): void
+    {
+        $want = self::version($driver);
+        if (is_file($versionFile) && trim((string) file_get_contents($versionFile)) === $want) {
+            return;
+        }
+        $lock = fopen($versionFile . '.lock', 'c');
+        if ($lock === false || !flock($lock, LOCK_EX)) {
+            throw new \RuntimeException('Cannot lock schema migration');
+        }
+        try {
+            if (!is_file($versionFile) || trim((string) file_get_contents($versionFile)) !== $want) {
+                self::migrate($db, $driver, $versionFile);
+            }
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    public static function migrate(Db $db, string $driver, ?string $versionFile = null): void
     {
         foreach (self::statements($driver) as $sql) {
             $db->query($sql);
@@ -134,6 +165,9 @@ final class Schema
         $sessions = new DatabaseStorage($db->getPdo(), Tables::SESSIONS);
         if (!$sessions->createTable()) {
             throw new \RuntimeException('Cannot create sessions table', 0, $sessions->getLastError());
+        }
+        if ($versionFile !== null) {
+            file_put_contents($versionFile, self::version($driver) . "\n", LOCK_EX);
         }
     }
 }

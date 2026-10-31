@@ -37,7 +37,7 @@
     {% endeach %}
     <p class="hint">Empty blocks are ignored. Text is shown exactly as typed — HTML is not interpreted. For an Image block pick a file from the <a href="/admin/media">media library</a>; the text becomes its alt text.</p>
   </fieldset>
-  <button>Save draft</button>
+  <button>{% if entry.published %}Save{% else %}Save draft{% endif %}</button>
 </form>
 {% if entry %}{% if can_publish %}{% if not entry.published %}
 <form method="post" action="/admin/entries/{{ entry.id | attr }}/publish" class="card">

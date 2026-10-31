@@ -30,7 +30,7 @@ use Dzentota\HttpClient\HttpClient;
 use Bastion\Http\Middleware\{AppSensorGate, ErrorHandler, InstallGuard, RequireStaff, SecurityHeaders, SessionCsrfStrategy};
 use Bastion\IdentityAccess\Application\{PasswordVerifier, TwoStepLogin};
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
-use Bastion\Infrastructure\Database\{Connection, Tables};
+use Bastion\Infrastructure\Database\{Connection, Schema, Tables};
 use Bastion\Installation\{DbDriver, DbHost, DbName, Installer, Paths};
 use Bastion\SecurityMonitoring\Application\SecurityPosture;
 use Bastion\SecurityMonitoring\Domain\AppSensor;
@@ -310,6 +310,8 @@ final class Kernel
         }
 
         $db = self::get($c, Db::class);
+        // новая версия кода с новыми таблицами не падает до ручного bin/bastion migrate
+        Schema::ensureCurrent($db, $db->getPdo()->getAttribute(\PDO::ATTR_DRIVER_NAME) === 'mysql' ? 'mysql' : 'sqlite', $paths->schemaVersion());
         $encryptor = new SessionEncryptor(substr(hash('sha256', (string) file_get_contents($paths->cacheKey()) . 'session', true), 0, 32));
         $storage = new DatabaseStorage($db->getPdo(), Tables::SESSIONS, [$encryptor, 'encrypt'], [$encryptor, 'decrypt']);
         $router->middleware(

@@ -26,4 +26,26 @@ final class SchemaMigrateTest extends TestCase
         }
         unlink($file);
     }
+
+    public function testSchemaIsMigratedAutomaticallyWhenCodeVersionChanges(): void
+    {
+        $dir = sys_get_temp_dir() . '/bastion-auto-' . bin2hex(random_bytes(4));
+        mkdir($dir);
+        $db = Connection::sqlite($dir . '/db.sqlite');
+        Schema::migrate($db, 'sqlite', $dir . '/schema.version');
+        self::assertSame(Schema::version('sqlite') . "\n", file_get_contents($dir . '/schema.version'));
+
+        // сайт на старой версии: таблицы нет, записанная версия устарела
+        $db->query('DROP TABLE ?_menu');
+        file_put_contents($dir . '/schema.version', "old\n");
+        Schema::ensureCurrent($db, 'sqlite', $dir . '/schema.version');
+        self::assertSame(0, (int) $db->selectCell('SELECT COUNT(*) FROM ?_menu'));
+        self::assertSame(Schema::version('sqlite') . "\n", file_get_contents($dir . '/schema.version'));
+
+        // версия совпадает — миграция не запускается
+        $db->query('DROP TABLE ?_menu');
+        Schema::ensureCurrent($db, 'sqlite', $dir . '/schema.version');
+        $this->expectException(\SecureDb\Exception\SecureDbException::class);
+        $db->selectCell('SELECT COUNT(*) FROM ?_menu');
+    }
 }
