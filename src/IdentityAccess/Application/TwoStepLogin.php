@@ -101,6 +101,21 @@ final class TwoStepLogin
         return true;
     }
 
+    /**
+     * Повторное подтверждение вторым фактором для опасного действия уже вошедшего пользователя
+     * (например, миграции схемы). Тот же шаг TOTP второй раз не принимается.
+     */
+    public function reconfirm(ServerRequestInterface $request, Account $account, string $code): bool
+    {
+        $secret = $account->hasTotp ? $this->accounts->totpSecret($account->id) : null;
+        $step = $secret ? $this->matchingStep($secret, $code) : null;
+        if ($step === null || !$this->accounts->consumeTotpStep($account->id, $step)) {
+            $this->sensor->event(DetectionPoint::AE12, ActorKey::account($account->username->toNative()), ActorKey::ip($this->ip($request)));
+            return false;
+        }
+        return true;
+    }
+
     /** Начало подключения TOTP: секрет живёт только в сессии до подтверждения кодом. */
     public function startEnrollment(SessionManager $session): ?TOTP
     {

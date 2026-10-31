@@ -109,6 +109,7 @@ foreach ([
     'extensions',
     'security-monitoring',
     'audit',
+    'schema-migrations',
 ] as $context) {
     (require __DIR__ . "/threat-model/{$context}.php")($model);
 }

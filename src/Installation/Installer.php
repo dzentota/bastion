@@ -5,7 +5,8 @@ namespace Bastion\Installation;
 
 use Bastion\IdentityAccess\Domain\{NewPassword, Role, SiteUrl, StaffEmail, Username};
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
-use Bastion\Infrastructure\Database\{Connection, Schema};
+use Bastion\Infrastructure\Database\Connection;
+use Bastion\Infrastructure\Database\Migrations\{Catalog, Migrator};
 use Bastion\Audit\Domain\AuditAction;
 use Bastion\Audit\Infrastructure\HmacAuditTrail;
 use Bastion\Media\Infrastructure\S3Config;
@@ -80,7 +81,7 @@ final class Installer
             @chmod($this->paths->sqlite(), 0600);
         }
 
-        Schema::migrate($conn, $db['driver']->toNative(), $this->paths->schemaVersion());
+        (new Migrator($conn, $db['driver']->toNative(), $this->paths->migrationLock(), Catalog::all()))->migrate(null, $ip);
         $encKey = KeyFactory::generateEncryptionKey();
         KeyFactory::save($encKey, $this->paths->encryptionKey());
         @chmod($this->paths->encryptionKey(), 0600);

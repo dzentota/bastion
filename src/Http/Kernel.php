@@ -21,16 +21,17 @@ use Bastion\Taxonomy\Infrastructure\TermRepository;
 use Bastion\Updates\Application\{UpdateChannel, UpdateConfig, UpdateTransport};
 use Bastion\Updates\Infrastructure\{HttpUpdateTransport, LedgerStore};
 use Bastion\Extensions\Infrastructure\{ExtensionRegistry, PublishedContentReader};
-use Bastion\Http\Controller\{AuditController, AuthController, ExtensionController, PasswordResetController, CommentController, EntryController, TermController, InstallController, MediaController, PublicController};
+use Bastion\Http\Controller\{AuditController, DatabaseController, AuthController, ExtensionController, PasswordResetController, CommentController, EntryController, TermController, InstallController, MediaController, PublicController};
 use dzentota\Router\Middleware\HoneypotMiddleware;
 use Bastion\Media\Application\{MediaSanitizer, UploadMedia, UploadPolicy};
 use Bastion\Media\Domain\{MediaId, MediaStorage};
 use Bastion\Media\Infrastructure\{LocalMediaStorage, MediaRepository, S3Config, S3MediaStorage};
 use Dzentota\HttpClient\HttpClient;
-use Bastion\Http\Middleware\{AppSensorGate, ErrorHandler, InstallGuard, RequireStaff, SecurityHeaders, SessionCsrfStrategy};
+use Bastion\Http\Middleware\{AppSensorGate, ErrorHandler, InstallGuard, MaintenanceMode, RequireStaff, SecurityHeaders, SessionCsrfStrategy};
 use Bastion\IdentityAccess\Application\{PasswordVerifier, TwoStepLogin};
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
-use Bastion\Infrastructure\Database\{Connection, Schema, Tables};
+use Bastion\Infrastructure\Database\{Connection, Tables};
+use Bastion\Infrastructure\Database\Migrations\{Catalog, DatabaseBackup, Migrator};
 use Bastion\Installation\{DbDriver, DbHost, DbName, Installer, Paths};
 use Bastion\SecurityMonitoring\Application\SecurityPosture;
 use Bastion\SecurityMonitoring\Domain\AppSensor;
@@ -237,6 +238,16 @@ final class Kernel
                     $paths->isInstalled() ? static fn (): array => self::get($c, MenuRepository::class)->items() : null,
                 );
             }),
+            Migrator::class => factory(fn (ContainerInterface $c) => new Migrator(
+                self::get($c, Db::class), self::driver(self::get($c, Db::class)), $paths->migrationLock(), Catalog::all(),
+            )),
+            DatabaseBackup::class => factory(fn (ContainerInterface $c) => new DatabaseBackup(
+                self::get($c, Db::class), self::driver(self::get($c, Db::class)), $paths->backups(),
+            )),
+            DatabaseController::class => factory(fn (ContainerInterface $c) => new DatabaseController(
+                self::get($c, Migrator::class), self::get($c, DatabaseBackup::class), self::get($c, TwoStepLogin::class),
+                self::get($c, View::class), self::get($c, AppSensor::class), self::get($c, AuditTrail::class),
+            )),
             MenuRepository::class => factory(fn (ContainerInterface $c) => new MenuRepository(self::get($c, Db::class))),
             Installer::class => create(Installer::class)->constructor(get(Paths::class)),
 
@@ -310,14 +321,14 @@ final class Kernel
         }
 
         $db = self::get($c, Db::class);
-        // новая версия кода с новыми таблицами не падает до ручного bin/bastion migrate
-        Schema::ensureCurrent($db, $db->getPdo()->getAttribute(\PDO::ATTR_DRIVER_NAME) === 'mysql' ? 'mysql' : 'sqlite', $paths->schemaVersion());
         $encryptor = new SessionEncryptor(substr(hash('sha256', (string) file_get_contents($paths->cacheKey()) . 'session', true), 0, 32));
         $storage = new DatabaseStorage($db->getPdo(), Tables::SESSIONS, [$encryptor, 'encrypt'], [$encryptor, 'decrypt']);
         $router->middleware(
             new AppSensorGate(self::get($c, AppSensor::class), $responses),
             ...self::sessionAndCsrf($storage, $c, $devCookies, self::get($c, AppSensor::class)),
         );
+        // ADR-0018: схему меняет только админ на /admin/database (или CLI), не обычный запрос.
+        $router->middleware(new MaintenanceMode(self::get($c, Migrator::class), $responses));
 
         $router->get('/', [PublicController::class, 'home']);
         $router->get('/admin/login', [AuthController::class, 'form']);
@@ -351,6 +362,8 @@ final class Kernel
         $router->post('/admin/extensions/enable', [ExtensionController::class, 'enable'])->middleware($staff);
         $router->post('/admin/extensions/disable', [ExtensionController::class, 'disable'])->middleware($staff);
         $router->get('/admin/audit', [AuditController::class, 'index'])->middleware($staff);
+        $router->get('/admin/database', [DatabaseController::class, 'show'])->middleware($staff);
+        $router->post('/admin/database', [DatabaseController::class, 'apply'])->middleware($staff);
         $router->get('/admin/comments', [CommentController::class, 'queue'])->middleware($staff);
         foreach (['approve', 'reject', 'spam'] as $action) {
             $router->post("/admin/comments/{id}/{$action}", [CommentController::class, $action])->where(['id' => CommentId::class])->middleware($staff);
@@ -407,6 +420,11 @@ final class Kernel
             $config, self::get($c, UpdateTransport::class), new LedgerStore(self::get($c, Db::class), self::derivedKey($paths, 'ledger')),
             self::get($c, ExtensionRegistry::class), self::get($c, AuditTrail::class), self::get($c, LoggerInterface::class),
         );
+    }
+
+    private static function driver(Db $db): string
+    {
+        return $db->getPdo()->getAttribute(\PDO::ATTR_DRIVER_NAME) === 'mysql' ? 'mysql' : 'sqlite';
     }
 
     /** Отдельный ключ на каждое назначение, выведенный из мастер-ключа var/keys/cache.key. */

@@ -68,9 +68,18 @@ switch ($cmd) {
         echo ($v->intact ? 'OK: ' : 'TAMPERED: ') . $v->reason . " ({$v->entries} entries verified)\n";
         exit($v->intact ? 0 : 2);
     case 'migrate':
-        // Догоняет схему после обновления Bastion: только CREATE ... IF NOT EXISTS, данные не трогаются.
-        \Bastion\Infrastructure\Database\Schema::migrate($db, $config['db']['driver'], $paths->schemaVersion());
-        echo "Schema is up to date.\n";
+        // ADR-0018: альтернатива экрану «Обновить базу» в админке. Перед миграциями — резервная копия.
+        $migrator = new \Bastion\Infrastructure\Database\Migrations\Migrator($db, $config['db']['driver'], $paths->migrationLock(), \Bastion\Infrastructure\Database\Migrations\Catalog::all());
+        $backup = new \Bastion\Infrastructure\Database\Migrations\DatabaseBackup($db, $config['db']['driver'], $paths->backups());
+        try {
+            $done = $migrator->migrate('cli', 'cli', $audit, static function () use ($backup): void {
+                echo 'Backup: ', $backup->create(), "\n";
+            });
+        } catch (\Bastion\Infrastructure\Database\Migrations\TamperedMigrations $e) {
+            fwrite(STDERR, $e->getMessage() . "\nRefusing to migrate. Restore the release files or the database from a backup.\n");
+            exit(2);
+        }
+        echo $done === [] ? "Schema is up to date.\n" : 'Applied: ' . implode(', ', $done) . "\n";
         break;
     case 'updates:run':
         // Автообновления расширений (ADR-0014): запускать по cron. Ничего не ставится без записи в журнале.

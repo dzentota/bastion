@@ -25,4 +25,5 @@ enum AuditAction: string
     case ExtensionDisabled = 'extension_disabled';
     case UpdateRejected = 'update_rejected';
     case EmergencyUnlock = 'emergency_unlock';
+    case SchemaMigrated = 'schema_migrated';
 }
