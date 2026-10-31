@@ -28,3 +28,12 @@ jobs:
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
       - name: Dependency audit
         run: composer audit
+      - name: SBOM (CycloneDX, ADR-0014) — runtime dependencies only
+        run: |
+          composer install --no-interaction --prefer-dist --no-dev
+          SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) php bin/sbom generate --version="${GITHUB_SHA}"
+          php bin/sbom verify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: build/sbom.cdx.json
