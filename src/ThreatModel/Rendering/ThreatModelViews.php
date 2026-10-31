@@ -51,7 +51,7 @@ final class ThreatModelViews
         }
         $rows = [
             [$this->t['tm_stories'] ?? 'Abuser stories', (string) count($m->stories),
-                $this->mark('✓', 'st-covered') . ' ' . ($byStatus['covered'] ?? 0) . ' ' . $this->e($this->t['st_covered'] ?? 'covered')
+                $this->mark('✓', 'st-covered') . ' ' . ($byStatus['covered'] ?? 0) . ' ' . $this->e($this->t['tm_covered_count'] ?? 'covered')
                 . (($byStatus['backlog'] ?? 0) > 0 ? ', ' . $byStatus['backlog'] . ' ' . $this->e($this->t['st_backlog'] ?? 'in backlog') : '')],
             [$this->t['tm_mitigations'] ?? 'Mitigations in code', (string) $mitigations, ''],
             [$this->t['tm_tested'] ?? 'Stories with attack tests', $tested . ' / ' . count($m->stories), ''],
