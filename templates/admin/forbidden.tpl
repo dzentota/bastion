@@ -1,5 +1,5 @@
 {% include "partials/head" %}
-<h1>Not allowed</h1>
-<p>Your role does not permit this action.</p>
-<p><a href="/admin">Back</a></p>
+<h1>{{ t.not_allowed }}</h1>
+<p>{{ t.role_not_permitted }}</p>
+<p><a href="/admin">{{ t.back }}</a></p>
 {% include "partials/foot" %}

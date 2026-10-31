@@ -21,7 +21,7 @@ use Bastion\Taxonomy\Infrastructure\TermRepository;
 use Bastion\Updates\Application\{UpdateChannel, UpdateConfig, UpdateTransport};
 use Bastion\Updates\Infrastructure\{HttpUpdateTransport, LedgerStore};
 use Bastion\Extensions\Infrastructure\{ExtensionRegistry, PublishedContentReader};
-use Bastion\Http\Controller\{AuditController, DatabaseController, AuthController, ExtensionController, PasswordResetController, CommentController, EntryController, TermController, InstallController, MediaController, PublicController};
+use Bastion\Http\Controller\{AuditController, DatabaseController, PreferencesController, AuthController, ExtensionController, PasswordResetController, CommentController, EntryController, TermController, InstallController, MediaController, PublicController};
 use dzentota\Router\Middleware\HoneypotMiddleware;
 use Bastion\Media\Application\{MediaSanitizer, UploadMedia, UploadPolicy};
 use Bastion\Media\Domain\{MediaId, MediaStorage};
@@ -31,6 +31,7 @@ use Bastion\Http\Middleware\{AppSensorGate, ErrorHandler, InstallGuard, Maintena
 use Bastion\IdentityAccess\Application\{PasswordVerifier, TwoStepLogin};
 use Bastion\IdentityAccess\Infrastructure\AccountRepository;
 use Bastion\Infrastructure\Database\{Connection, Tables};
+use Bastion\Shared\I18n\StringCatalog;
 use Bastion\Infrastructure\Database\Migrations\{Catalog, DatabaseBackup, Migrator};
 use Bastion\Installation\{DbDriver, DbHost, DbName, Installer, Paths};
 use Bastion\SecurityMonitoring\Application\SecurityPosture;
@@ -236,6 +237,8 @@ final class Kernel
                     new Renderer(new DirectoryTemplateSource($paths->theme('default')), $cache('theme'), self::get($c, HelperCollector::class)->all()),
                     self::get($c, ResponseFactoryInterface::class),
                     $paths->isInstalled() ? static fn (Language $lang): array => self::get($c, MenuRepository::class)->items($lang) : null,
+                    self::get($c, StringCatalog::class),
+                    self::get($c, SiteLanguages::class)->default,
                 );
             }),
             Migrator::class => factory(fn (ContainerInterface $c) => new Migrator(
@@ -264,6 +267,10 @@ final class Kernel
                 $cfg = ConfigLoaderFactory::createFromJsonAndEnv($paths->config(), 'BASTION_', false);
                 return SiteLanguages::fromConfig($cfg->getRaw('site.languages', null), $cfg->getRaw('site.default_language', null));
             }),
+            StringCatalog::class => factory(fn () => new StringCatalog($paths->translations())),
+            PreferencesController::class => factory(fn (ContainerInterface $c) => new PreferencesController(
+                self::get($c, AccountRepository::class), self::get($c, StringCatalog::class), self::get($c, View::class),
+            )),
             SiteContext::class => factory(fn (ContainerInterface $c) => new SiteContext(self::get($c, SiteLanguages::class))),
             CommentRepository::class => factory(fn (ContainerInterface $c) => new CommentRepository(self::get($c, Db::class))),
             // Анонимная форма: подписанная метка времени + поле-ловушка (dzentota/router).
@@ -374,6 +381,7 @@ final class Kernel
         $router->post('/admin/extensions/enable', [ExtensionController::class, 'enable'])->middleware($staff);
         $router->post('/admin/extensions/disable', [ExtensionController::class, 'disable'])->middleware($staff);
         $router->get('/admin/audit', [AuditController::class, 'index'])->middleware($staff);
+        $router->post('/admin/locale', [PreferencesController::class, 'locale'])->middleware($staff);
         $router->get('/admin/database', [DatabaseController::class, 'show'])->middleware($staff);
         $router->post('/admin/database', [DatabaseController::class, 'apply'])->middleware($staff);
         $router->get('/admin/comments', [CommentController::class, 'queue'])->middleware($staff);

@@ -45,7 +45,7 @@ final class EntryController
         $account = $this->account($request);
         $rows = array_map(fn (Entry $e) => [
             'id' => $e->id->toNative(), 'title' => $e->title(), 'status' => $e->status()->value, 'type' => $e->type->value,
-            'url' => $e->path(), 'lang' => $e->lang->toNative(), 'published' => $e->isPublished(),
+            'url' => $e->path(), 'lang' => $e->lang->toNative(), 'published' => $e->isPublished(), 'is_page' => $e->type === EntryType::Page,
         ], $this->entries->latest(100, false));
         return $this->view->admin($request, 'dashboard', [
             'entries' => $rows, 'me' => ['name' => $account->username],
@@ -280,7 +280,7 @@ final class EntryController
             $rows[] = [
                 'lang' => $l->toNative(), 'current' => $v !== null && $v->id->isSame($entry->id),
                 'edit' => $v !== null ? '/admin/entries/' . $v->id->toNative() . '/edit' : null,
-                'status' => $v?->status()->value, 'title' => $v?->title(),
+                'status' => $v?->status()->value, 'published' => $v?->isPublished() ?? false, 'title' => $v?->title(),
             ];
         }
         return $rows;

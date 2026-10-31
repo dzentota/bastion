@@ -31,6 +31,24 @@ return static function (ThreatModel $model): void {
     $s->requiredCwes = ['CWE-200'];
     $model->addAbuseCase($s);
 
+    $s = new AbuseCase('catalog-injection', 'Execute code or inject markup through string catalogs');
+    $s->asA = 'attacker with limited file write on the hosting';
+    $s->iWant = 'drop a catalog file with code or HTML into translations/';
+    $s->soThat = 'run code or show script to administrators';
+    $s->actorId = 'anonymous-attacker';
+    $s->assetIds = ['bastion-app', 'app-filesystem'];
+    $s->requiredCwes = ['CWE-94'];
+    $model->addAbuseCase($s);
+
+    $s = new AbuseCase('ui-locale-tampering', 'Abuse the admin language switch');
+    $s->asA = 'cross-site attacker or another staff member';
+    $s->iWant = 'set an arbitrary or someone else\'s interface language, or bounce through the switch to another site';
+    $s->soThat = 'break the admin for a victim or use the redirect for phishing';
+    $s->actorId = 'malicious-author';
+    $s->assetIds = ['bastion-app'];
+    $s->requiredCwes = ['CWE-20', 'CWE-601'];
+    $model->addAbuseCase($s);
+
     $s = new AbuseCase('legacy-redirect-abuse', 'Turn pre-i18n URL redirects into an open redirect');
     $s->asA = 'anonymous attacker';
     $s->iWant = 'craft an old-style /{slug} URL that redirects off-site';

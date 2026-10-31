@@ -102,11 +102,18 @@ final class AccountRepository implements CredentialStore
         if (!AccountId::tryParse($userId, $id)) {
             return null;
         }
-        $row = $this->db->selectRow('SELECT id, username, role, totp_secret FROM ?_accounts WHERE id = ?', $id);
+        // SELECT *: до миграции 0003 колонки locale нет, а вход нужен, чтобы её применить
+        $row = $this->db->selectRow('SELECT * FROM ?_accounts WHERE id = ?', $id);
         if (!$row) {
             return null;
         }
-        return new Account($id, Username::fromNative($row['username']), Role::from($row['role']), $row['totp_secret'] !== null);
+        $locale = \Bastion\Content\Domain\Language::tryParse($row['locale'] ?? null, $l) ? $l : null;
+        return new Account($id, Username::fromNative($row['username']), Role::from($row['role']), $row['totp_secret'] !== null, $locale);
+    }
+
+    public function setLocale(AccountId $id, \Bastion\Content\Domain\Language $lang): void
+    {
+        $this->db->update('?_accounts', ['locale' => $lang->toNative()], ['id' => $id->toNative()]);
     }
 
     public function saveTotpSecret(AccountId $id, HiddenString $secret): void

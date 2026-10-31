@@ -75,7 +75,7 @@ final class TermController
         $n = $page->toInt();
         return $this->view->theme('term', [
             'site' => $this->site->for($language),
-            'term' => ['kind' => $term->kind === TermKind::Category ? 'Category' : 'Tag', 'name' => $term->slug],
+            'term' => ['kind' => $term->kind === TermKind::Category ? 'Category' : 'Tag', 'is_category' => $term->kind === TermKind::Category, 'name' => $term->slug],
             'posts' => $posts,
             'prev' => $n > 1 ? $term->url($language) . ($n > 2 ? '?page=' . ($n - 1) : '') : null,
             'next' => $more && $n < PageNumber::MAX ? $term->url($language) . '?page=' . ($n + 1) : null,

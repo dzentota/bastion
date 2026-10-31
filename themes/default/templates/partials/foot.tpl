@@ -1,4 +1,4 @@
 </main>
-<footer class="site">Powered by Bastion</footer>
+<footer class="site">{{ t.powered_by }}</footer>
 </body>
 </html>

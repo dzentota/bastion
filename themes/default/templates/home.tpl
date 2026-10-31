@@ -5,5 +5,5 @@
   <time>{{ p.date }}</time>
 </article>
 {% endeach %}
-{% if not posts %}<p>Nothing published yet.</p>{% endif %}
+{% if not posts %}<p>{{ t.nothing_published }}</p>{% endif %}
 {% include "partials/foot" %}

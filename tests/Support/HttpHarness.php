@@ -26,6 +26,7 @@ final class HttpHarness
         $repo = dirname(__DIR__, 2);
         symlink($repo . '/templates', $root . '/templates');
         symlink($repo . '/themes', $root . '/themes');
+        symlink($repo . '/translations', $root . '/translations');
         $this->paths = new Paths($root);
         $this->mailer = new CapturingMailer();
     }

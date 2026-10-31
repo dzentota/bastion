@@ -23,7 +23,7 @@ final class DatabaseUpdateHttpTest extends TestCase
         self::assertSame('/admin/database', $h->get('/admin')->getHeaderLine('Location'));
 
         $h->get('/admin/database');
-        self::assertStringContainsString('0001_baseline', $h->body());
+        self::assertStringContainsString('0003_account_locale', $h->body());
         self::assertSame(303, $h->post('/admin/database', ['code' => $this->nextCode($secret)])->getStatusCode());
 
         self::assertSame(200, $h->fresh()->get('/en')->getStatusCode());
@@ -75,7 +75,10 @@ final class DatabaseUpdateHttpTest extends TestCase
     {
         $h = new HttpHarness();
         $secret = $h->installAndLogin();
-        Connection::sqlite($h->paths->sqlite())->query('DELETE FROM ?_schema_migrations');
+        // сайт на прошлом релизе: последней миграции нет ни в учёте, ни в схеме
+        $db = Connection::sqlite($h->paths->sqlite());
+        $db->query("DELETE FROM ?_schema_migrations WHERE id = '0003_account_locale'");
+        $db->query('ALTER TABLE ?_accounts DROP COLUMN locale');
         return [$h, $secret];
     }
 

@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Bastion\Http;
 
+use Bastion\Content\Domain\Language;
+use Bastion\Http\Middleware\RequireStaff;
+use Bastion\IdentityAccess\Domain\Account;
+use Bastion\Shared\I18n\StringCatalog;
 use Bastion\Theming\Dsl\{Renderer, TemplateName};
 use dzentota\Router\Middleware\CsrfMiddleware;
 use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};
@@ -14,9 +18,23 @@ final class View
         private readonly Renderer $admin,
         private readonly Renderer $theme,
         private readonly ResponseFactoryInterface $responses,
-        /** @var (\Closure(\Bastion\Content\Domain\Language): list<array{title: string, url: string}>)|null */
+        /** @var (\Closure(Language): list<array{title: string, url: string}>)|null */
         private readonly ?\Closure $siteMenu = null,
+        private readonly ?StringCatalog $catalog = null,
+        private readonly ?Language $defaultLanguage = null,
     ) {
+    }
+
+    /** Язык админки: выбор пользователя → язык сайта по умолчанию → английский (если нет перевода). */
+    public function adminLanguage(ServerRequestInterface $request): Language
+    {
+        $account = $request->getAttribute(RequireStaff::ACCOUNT);
+        foreach ([$account instanceof Account ? $account->locale : null, $this->defaultLanguage] as $candidate) {
+            if ($candidate !== null && $this->catalog?->hasAdmin($candidate)) {
+                return $candidate;
+            }
+        }
+        return Language::fromNative('en');
     }
 
     /** @param array<string, mixed> $ctx */
@@ -26,15 +44,39 @@ final class View
         if (is_string($token)) {
             $ctx['csrf'] = $token;
         }
+        $lang = $this->adminLanguage($request);
+        $ctx['ui_lang'] = $lang->toNative();
+        if ($this->catalog !== null) {
+            $ctx['t'] = $this->catalog->strings('admin', $lang);
+            // сообщения контроллеров — английский текст как ключ
+            if (is_array($ctx['errors'] ?? null)) {
+                $ctx['errors'] = array_map(fn (mixed $e) => is_string($e) ? $this->catalog->message($e, $lang) : $e, $ctx['errors']);
+            }
+            if (is_string($ctx['error'] ?? null)) {
+                $ctx['error'] = $this->catalog->message($ctx['error'], $lang);
+            }
+            $account = $request->getAttribute(RequireStaff::ACCOUNT);
+            $languages = $this->catalog->adminLanguages();
+            $ctx['ui_languages'] = $account instanceof Account && count($languages) > 1
+                ? array_map(static fn (Language $l) => ['code' => $l->toNative(), 'current' => $l->toNative() === $lang->toNative()], $languages)
+                : [];
+        }
         return $this->html($this->admin->render(TemplateName::fromNative($template), $ctx), $status);
     }
 
     /** @param array<string, mixed> $ctx */
     public function theme(string $template, array $ctx, int $status = 200): ResponseInterface
     {
-        if (is_array($ctx['site'] ?? null) && $this->siteMenu !== null
-            && \Bastion\Content\Domain\Language::tryParse($ctx['site']['lang'] ?? null, $lang)) {
+        $lang = is_array($ctx['site'] ?? null) && Language::tryParse($ctx['site']['lang'] ?? null, $l) ? $l : null;
+        if ($lang !== null && $this->siteMenu !== null) {
             $ctx['site']['menu'] = ($this->siteMenu)($lang);
+        }
+        if ($this->catalog !== null) {
+            $lang ??= $this->defaultLanguage ?? Language::fromNative('en');
+            $ctx['t'] = $this->catalog->strings('theme', $lang);
+            if (is_array($ctx['comment_form'] ?? null) && is_string($ctx['comment_form']['error'] ?? null)) {
+                $ctx['comment_form']['error'] = $this->catalog->message($ctx['comment_form']['error'], $lang);
+            }
         }
         return $this->html($this->theme->render(TemplateName::fromNative($template), $ctx), $status);
     }

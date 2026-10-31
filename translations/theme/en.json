@@ -1,0 +1,23 @@
+{
+    "site_menu": "Site",
+    "language": "Language",
+    "categories_label": "Categories:",
+    "tags_label": "Tags:",
+    "comments": "Comments",
+    "no_comments": "No comments yet.",
+    "comment_sent": "Thank you! Your comment will appear after moderation.",
+    "honeypot": "Leave this empty",
+    "name": "Name",
+    "comment": "Comment",
+    "comment_hint": "Plain text only. Comments are moderated. We don't ask for your email and don't store your IP address.",
+    "post_comment": "Post comment",
+    "nothing_published": "Nothing published yet.",
+    "page_not_found": "Page not found",
+    "home": "Home",
+    "category": "Category",
+    "tag": "Tag",
+    "nothing_published_here": "Nothing published here yet.",
+    "newer": "Newer",
+    "older": "Older",
+    "powered_by": "Powered by Bastion"
+}

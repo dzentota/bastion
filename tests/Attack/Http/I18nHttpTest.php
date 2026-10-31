@@ -46,6 +46,8 @@ final class I18nHttpTest extends TestCase
         $ruPage = (string) $anon->get('/ru/hello')->getBody();
         self::assertStringContainsString('<html lang="ru">', $ruPage);
         self::assertStringContainsString('Привет', $ruPage);
+        self::assertStringContainsString('Комментарии', $ruPage, 'тема на языке страницы');
+        self::assertStringContainsString('Comments', (string) $anon->get('/en/hello')->getBody());
 
         // главная каждого языка — только свои записи
         self::assertStringNotContainsString('Привет', (string) $anon->get('/en')->getBody());

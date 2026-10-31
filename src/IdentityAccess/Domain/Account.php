@@ -12,6 +12,8 @@ final class Account implements Identity
         public readonly Username $username,
         public readonly Role $role,
         public readonly bool $hasTotp,
+        /** язык интерфейса админки; null — язык сайта по умолчанию */
+        public readonly ?\Bastion\Content\Domain\Language $locale = null,
     ) {
     }
 
