@@ -39,14 +39,25 @@
     {% endeach %}
     <p class="hint">{{ t.blocks_hint }} <a href="/admin/media">{{ t.blocks_hint_media_link }}</a>{{ t.blocks_hint_suffix }}</p>
   </fieldset>
-  <button>{% if entry.published %}{{ t.save }}{% else %}{{ t.save_draft }}{% endif %}</button>
+  <button>{% if entry.published %}{{ t.save_changes }}{% else %}{{ t.save_draft }}{% endif %}</button>
+  {% if entry.published %}<p class="hint">{{ t.save_published_hint }}</p>{% endif %}
 </form>
-{% if entry %}{% if can_publish %}{% if not entry.published %}
+{% if entry %}
+{% if entry.pending %}<p class="notice" role="status">{{ t.pending_changes }}</p>{% endif %}
+{% if slug_conflict %}<p class="errors" role="alert">{{ t.publish_slug_conflict }}</p>{% endif %}
+{% if can_publish %}{% if entry.pending %}
+<form method="post" action="/admin/entries/{{ entry.id | attr }}/publish" class="card">
+  <input type="hidden" name="_token" value="{{ csrf | attr }}">
+  <button>{{ t.publish_changes }}</button>
+</form>
+{% endif %}{% if not entry.published %}
 <form method="post" action="/admin/entries/{{ entry.id | attr }}/publish" class="card">
   <input type="hidden" name="_token" value="{{ csrf | attr }}">
   <button>{{ t.publish }}</button>
 </form>
-{% endif %}{% endif %}{% endif %}
+{% endif %}{% endif %}
+<p><a href="/admin/entries/{{ entry.id | attr }}/revisions">{{ t.revision_history }}</a></p>
+{% endif %}
 {% if translations %}
 <section class="card" aria-labelledby="translations">
   <h2 id="translations">{{ t.translations }}</h2>

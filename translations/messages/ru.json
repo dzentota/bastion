@@ -34,5 +34,6 @@
     "Too many comments right now. Please try again later.": "Сейчас слишком много комментариев. Повторите попытку позже.",
     "Please choose a different name.": "Пожалуйста, выберите другое имя.",
     "Comments are not available for this page.": "Комментарии для этой страницы недоступны.",
-    "Please write a name (up to 60 characters) and a comment (up to 5000 characters).": "Укажите имя (до 60 символов) и комментарий (до 5000 символов)."
+    "Please write a name (up to 60 characters) and a comment (up to 5000 characters).": "Укажите имя (до 60 символов) и комментарий (до 5000 символов).",
+    "Revision history failed its integrity check; publishing is blocked.": "История ревизий не прошла проверку целостности; публикация заблокирована."
 }

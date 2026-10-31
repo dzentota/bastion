@@ -4,7 +4,9 @@ declare(strict_types=1);
 namespace Bastion\Http\Controller;
 
 use Bastion\Audit\Domain\{AuditAction, AuditTrail};
-use Bastion\Content\Domain\{Entry, EntryId, EntryType, Language, MenuPosition, SiteLanguages, Slug, Title};
+use Bastion\Content\Domain\{Entry, EntryId, EntryType, Language, MenuPosition, Revision, RevisionNumber, SiteLanguages, Slug, Title};
+use Bastion\Content\Infrastructure\RevisionRepository;
+use Bastion\IdentityAccess\Infrastructure\AccountRepository;
 use Bastion\Content\Domain\Block\{Block, BlockList, Heading, Image, InvalidBlock, Paragraph, Quote};
 use Bastion\Media\Domain\{MediaId, MediaItem};
 use Bastion\Media\Infrastructure\MediaRepository;
@@ -37,6 +39,8 @@ final class EntryController
         private readonly \Bastion\SecurityMonitoring\Application\SecurityPosture $posture,
         private readonly \Bastion\Content\Infrastructure\MenuRepository $menu,
         private readonly SiteLanguages $languages,
+        private readonly RevisionRepository $revisions,
+        private readonly AccountRepository $accounts,
     ) {
     }
 
@@ -66,15 +70,17 @@ final class EntryController
         if ($entry === null || !$this->mayEdit($request, $entry)) {
             return $this->view->admin($request, 'not-found', [], 404);
         }
+        $this->revisions->ensureBaseline($entry);
+        $head = $this->revisions->head($entry->id);
         $rows = [];
-        foreach ($entry->blocks() as $b) {
+        foreach ($head->blocks ?? $entry->blocks() as $b) {
             $data = array_map('strval', $b->toArray());
             $rows[] = $b instanceof Image
                 ? ['type' => 'image', 'media' => $data['media'], 'text' => $data['alt']]
                 : ['type' => $b::type()] + $data;
         }
         return $this->editor($request, $entry, [
-            'title' => $entry->title(), 'slug' => $entry->slug(), 'type' => $entry->type->value, 'lang' => $entry->lang->toNative(),
+            'title' => $head->title ?? $entry->title(), 'slug' => $head->slug ?? $entry->slug(), 'type' => $entry->type->value, 'lang' => $entry->lang->toNative(),
             'categories' => $this->terms->forEntry($entry->id, TermKind::Category)->toInput(),
             'tags' => $this->terms->forEntry($entry->id, TermKind::Tag)->toInput(),
             'in_menu' => ($pos = $this->menu->positionOf($entry->id)) !== null,
@@ -105,10 +111,77 @@ final class EntryController
         if (!$this->account($request)->role->can(Capability::ContentPublish)) {
             return $this->forbidden($request);
         }
+        $this->revisions->ensureBaseline($entry);
+        $chain = $this->revisions->chain($entry->id);
+        $head = $chain->revisions[0] ?? null;
+        if (!$chain->intact || $head === null) {
+            return $this->view->admin($request, 'integrity', ['error' => 'Revision history failed its integrity check; publishing is blocked.'], 409);
+        }
+        if ($this->entries->slugTaken($entry->lang, $head->slug, $entry->id)) {
+            return $this->view->redirect('/admin/entries/' . $entry->id->toNative() . '/edit?error=slug');
+        }
+        $entry->revise($head->title, $head->slug, $head->blocks);
         $entry->publish($this->clock->now());
         $this->entries->save($entry);
+        $this->revisions->markPublished($entry->id, $head->id);
         $this->audit->record(AuditAction::EntryPublished, $this->account($request)->getId(), $entry->id->toNative(), $this->ip($request));
         return $this->view->redirect('/admin');
+    }
+
+    #[AbuserStory('revision-snooping')]
+    #[Mitigation(cwe: 'CWE-285', description: 'History and rollback use the same edit-rights check as the editor (own entries, or content.edit_others)')]
+    public function history(ServerRequestInterface $request, EntryId $id): ResponseInterface
+    {
+        $entry = $this->entries->find($id);
+        if ($entry === null || !$this->mayEdit($request, $entry)) {
+            return $this->view->admin($request, 'not-found', [], 404);
+        }
+        $this->revisions->ensureBaseline($entry);
+        $chain = $this->revisions->chain($entry->id);
+        $published = $this->revisions->publishedId($entry->id);
+        $head = $chain->revisions[0] ?? null;
+        return $this->view->admin($request, 'revisions', [
+            'entry' => ['id' => $entry->id->toNative(), 'title' => $entry->title()],
+            'intact' => $chain->intact,
+            'broken_at' => (string) ($chain->brokenAt ?? ''),
+            'revisions' => array_map(fn (Revision $r) => [
+                'seq' => (string) $r->seq, 'at' => $r->createdAt->format('Y-m-d H:i'), 'title' => $r->title,
+                'author' => $this->authorName($r->authorId),
+                'published' => $r->id->toNative() === $published, 'head' => $r === $head,
+                'restored_from' => $r->restoredFrom !== null ? (string) $r->restoredFrom : null,
+                'has_previous' => $r->seq > 1,
+            ], $chain->revisions),
+        ]);
+    }
+
+    #[AbuserStory('revision-tamper')]
+    #[Mitigation(cwe: 'CWE-345', description: 'Rollback is refused when the revision chain fails verification, so injected rows cannot be promoted to the working copy')]
+    public function restore(ServerRequestInterface $request, EntryId $id, RevisionNumber $seq): ResponseInterface
+    {
+        $entry = $this->entries->find($id);
+        if ($entry === null || !$this->mayEdit($request, $entry)) {
+            return $this->view->admin($request, 'not-found', [], 404);
+        }
+        $chain = $this->revisions->chain($entry->id);
+        $old = $this->revisions->find($entry->id, $seq->toInt());
+        if ($old === null || !$chain->intact) {
+            return $this->view->admin($request, 'not-found', [], 404);
+        }
+        if (!$entry->isPublished()) {
+            $entry->revise($old->title, $old->slug, $old->blocks);
+            $this->entries->save($entry);
+        }
+        $this->revisions->record($entry, $old->title, $old->slug, $old->blocks, $this->account($request)->getId(), $old->seq);
+        $this->audit->record(AuditAction::RevisionRestored, $this->account($request)->getId(), $entry->id->toNative(), $this->ip($request));
+        return $this->view->redirect('/admin/entries/' . $entry->id->toNative() . '/edit');
+    }
+
+    /** @var array<string, string> */
+    private array $authorNames = [];
+
+    private function authorName(string $id): string
+    {
+        return $this->authorNames[$id] ??= $this->accounts->find($id)?->username->toNative() ?? $id;
     }
 
     /** Черновик перевода в той же группе: блоки и заголовок исходника — отправная точка. */
@@ -132,10 +205,13 @@ final class EntryController
         }
         $copy = $source->translate($lang, $source->title(), $slug, $this->account($request)->getId());
         $this->entries->save($copy);
+        $this->revisions->record($copy, $copy->title(), $copy->slug(), $copy->blocks(), $this->account($request)->getId());
         $this->audit->record(AuditAction::EntryCreated, $this->account($request)->getId(), $copy->id->toNative(), $this->ip($request));
         return $this->view->redirect('/admin/entries/' . $copy->id->toNative() . '/edit');
     }
 
+    #[AbuserStory('unpublished-change-leak')]
+    #[Mitigation(cwe: 'CWE-200', description: 'Saving a published entry only appends a revision; the public row changes when a publisher publishes that revision')]
     private function save(ServerRequestInterface $request, ?Entry $entry): ResponseInterface
     {
         $errors = [];
@@ -189,10 +265,16 @@ final class EntryController
         $action = $entry === null ? AuditAction::EntryCreated : AuditAction::EntryUpdated;
         if ($entry === null) {
             $entry = Entry::draft($type, $lang, $title, $slug, $blocks, $this->account($request)->getId());
+            $this->entries->save($entry);
         } else {
-            $entry->revise($title, $slug, $blocks);
+            $this->revisions->ensureBaseline($entry);
+            if (!$entry->isPublished()) {
+                // черновик: строка entries — рабочая копия; у опубликованной — то, что на сайте, до «Опубликовать»
+                $entry->revise($title, $slug, $blocks);
+                $this->entries->save($entry);
+            }
         }
-        $this->entries->save($entry);
+        $this->revisions->record($entry, $title, $slug, $blocks, $this->account($request)->getId());
         if (!$this->terms->assign($entry->id, $categories) || !$this->terms->assign($entry->id, $tags)) {
             return $this->editor($request, $entry, ['title' => $rawTitle, 'slug' => $rawSlug, 'categories' => $rawCategories, 'tags' => $rawTags, 'type' => $type->value, 'lang' => $lang->toNative()],
                 $rows, ['The site has reached the limit of distinct categories or tags; reuse existing ones.'], 422);
@@ -252,7 +334,12 @@ final class EntryController
         $account = $this->account($request);
         $current = is_string($values['lang'] ?? null) ? $values['lang'] : $this->languages->default->toNative();
         return $this->view->admin($request, 'editor', [
-            'entry' => $entry ? ['id' => $entry->id->toNative(), 'published' => $entry->isPublished(), 'lang' => $entry->lang->toNative()] : null,
+            'entry' => $entry ? [
+                'id' => $entry->id->toNative(), 'published' => $entry->isPublished(), 'lang' => $entry->lang->toNative(),
+                // у опубликованной записи есть сохранённые, но не опубликованные изменения
+                'pending' => $entry->isPublished() && ($h = $this->revisions->head($entry->id)) !== null && $h->id->toNative() !== $this->revisions->publishedId($entry->id),
+            ] : null,
+            'slug_conflict' => ($request->getQueryParams()['error'] ?? null) === 'slug',
             // язык выбирается только у новой записи
             'languages' => $entry === null && count($this->languages->all) > 1
                 ? array_map(static fn (Language $l) => ['code' => $l->toNative(), 'selected' => $l->toNative() === $current], $this->languages->all)

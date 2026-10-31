@@ -149,5 +149,22 @@
     "confirm": "Confirm",
     "two_factor_code": "Two-factor code",
     "code_from_app": "6-digit code from your authenticator app",
-    "verify": "Verify"
+    "verify": "Verify",
+    "save_changes": "Save changes",
+    "save_published_hint": "Saving creates a new revision. The live page changes only when you publish it.",
+    "pending_changes": "This entry has saved changes that are not published yet.",
+    "publish_changes": "Publish changes",
+    "publish_slug_conflict": "Cannot publish: another entry in this language already uses this slug.",
+    "revision_history": "Revision history",
+    "integrity_blocked": "Blocked by an integrity check",
+    "revisions_intact": "Revision history verified: every revision is signed and the chain is unbroken.",
+    "revisions_broken": "Revision history failed its integrity check",
+    "revisions_broken_at": "at revision",
+    "revisions_broken_hint": "The history may have been tampered with in the database. Publishing and rollback are blocked.",
+    "revision_time": "Saved",
+    "revision_author": "Author",
+    "restored_from": "restored from",
+    "revision_live": "Live",
+    "revision_current": "Current",
+    "restore_revision": "Restore"
 }
