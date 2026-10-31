@@ -6,7 +6,12 @@ namespace Bastion\Infrastructure\Database;
 use Dzentota\Session\Storage\DatabaseStorage;
 use SecureDb\Db;
 
-/** Схема БД. DDL совместим с SQLite и MySQL (только переносимые типы). */
+/**
+ * Схема БД. DDL совместим с SQLite и MySQL (только переносимые типы).
+ * Все операторы идемпотентны: migrate() безопасно запускать на рабочей базе (bin/bastion migrate)
+ * — так новые таблицы появляются на уже установленных сайтах. Изменение существующих колонок
+ * этим путём не поддерживается.
+ */
 final class Schema
 {
     /** @return list<string> */
@@ -94,10 +99,11 @@ final class Schema
                 entry_id VARCHAR(36) NOT NULL,
                 kind VARCHAR(16) NOT NULL,
                 slug VARCHAR(96) NOT NULL,
-                PRIMARY KEY (entry_id, kind, slug)
+                PRIMARY KEY (entry_id, kind, slug)" . ($driver === 'mysql' ? ",
+                INDEX entry_terms_by_term (kind, slug, entry_id)" : '') . "
             ){$suffix}",
-            // листинг термина ищет по (kind, slug) — без полного сканирования
-            "CREATE INDEX " . ($driver === 'mysql' ? '' : 'IF NOT EXISTS ') . "?_entry_terms_by_term ON ?_entry_terms (kind, slug, entry_id)",
+            // листинг термина ищет по (kind, slug) — без полного сканирования; в MySQL индекс объявлен в таблице
+            ...($driver === 'mysql' ? [] : ["CREATE INDEX IF NOT EXISTS ?_entry_terms_by_term ON ?_entry_terms (kind, slug, entry_id)"]),
             "CREATE TABLE IF NOT EXISTS ?_ledger (
                 seq INTEGER PRIMARY KEY,
                 hash VARCHAR(64) NOT NULL,
